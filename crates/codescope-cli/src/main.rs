@@ -6,6 +6,17 @@ use tracing_subscriber::EnvFilter;
 
 mod commands;
 
+fn print_error(err: &anyhow::Error, verbose: bool) {
+    eprintln!("Error: {err}");
+    for cause in err.chain().skip(1) {
+        eprintln!("  Caused by: {cause}");
+    }
+    if verbose {
+        eprintln!();
+        eprintln!("{err:?}");
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "codescope")]
 #[command(author, version, about = "Fast offline code search for AI agents", long_about = None)]
@@ -75,16 +86,24 @@ enum Commands {
     },
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
+fn main() -> std::process::ExitCode {
+    let Cli {
+        verbose,
+        quiet,
+        command,
+    } = Cli::parse();
 
     // Set up logging
-    let filter = if cli.quiet {
+    let filter = if quiet {
         EnvFilter::new("error")
-    } else if cli.verbose {
-        EnvFilter::new("debug")
+    } else if verbose {
+        EnvFilter::new(
+            "warn,codescope=debug,codescope_cli=debug,codescope_core=debug,codescope_search=debug,codescope_embed=debug,codescope_parser=debug",
+        )
     } else {
-        EnvFilter::new("info")
+        EnvFilter::new(
+            "warn,codescope=info,codescope_cli=info,codescope_core=info,codescope_search=info,codescope_embed=info,codescope_parser=info",
+        )
     };
 
     tracing_subscriber::fmt()
@@ -93,12 +112,12 @@ fn main() -> Result<()> {
         .init();
 
     // Dispatch to command handlers
-    match cli.command {
+    let result: Result<()> = match command {
         Commands::Init { profile, force } => {
-            commands::init::run(&profile, force)?;
+            commands::init::run(&profile, force)
         }
         Commands::Index { all, jobs } => {
-            commands::index::run(all, jobs)?;
+            commands::index::run(all, jobs)
         }
         Commands::Search {
             query,
@@ -106,15 +125,26 @@ fn main() -> Result<()> {
             pretty,
             r#type,
         } => {
-            commands::search::run(&query, top, pretty, &r#type)?;
+            commands::search::run(&query, top, pretty, &r#type)
         }
         Commands::Status => {
-            commands::status::run()?;
+            commands::status::run()
         }
         Commands::Clean { yes } => {
-            commands::clean::run(yes)?;
+            commands::clean::run(yes)
+        }
+    };
+
+    match result {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(err) => {
+            if err.downcast_ref::<commands::errors::NoResultsError>().is_some() {
+                // Search had no results.
+                return std::process::ExitCode::from(2);
+            }
+
+            print_error(&err, verbose);
+            std::process::ExitCode::from(1)
         }
     }
-
-    Ok(())
 }

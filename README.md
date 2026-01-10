@@ -43,7 +43,7 @@ codescope index
 codescope search "authentication middleware"
 
 # Search with options
-codescope search "error handling" -n 20 --pretty --type semantic
+codescope search "error handling" -n 20 --pretty --type lexical
 ```
 
 ## Commands
@@ -55,6 +55,8 @@ codescope search "error handling" -n 20 --pretty --type semantic
 | `search` | Search the codebase |
 | `status` | Show project status and index stats |
 | `clean` | Remove index data |
+
+For a full CLI reference (flags, exit codes, examples, model setup), see `docs/cli.md`.
 
 ### Search Types
 
@@ -91,7 +93,7 @@ codescope/
 │   ├── codescope-cli/      # CLI interface (clap)
 │   ├── codescope-core/     # Config, profiles, project management
 │   ├── codescope-parser/   # Tree-sitter parsing and chunking
-│   ├── codescope-embed/    # ONNX embeddings (MiniLM-L6-v2)
+│   ├── codescope-embed/    # ONNX embeddings
 │   └── codescope-search/   # Tantivy BM25 + HNSW ANN + RRF fusion
 └── .codescope/             # Per-project index (gitignored)
 ```
@@ -111,6 +113,7 @@ Each project stores its index in `.codescope/`:
 |----------|------------|
 | TypeScript | `.ts`, `.tsx` |
 | JavaScript | `.js`, `.jsx`, `.mjs` |
+| Vue SFC | `.vue` |
 | Python | `.py` |
 | Rust | `.rs` |
 | Go | `.go` |

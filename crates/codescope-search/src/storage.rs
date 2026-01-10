@@ -248,7 +248,8 @@ impl Storage {
             params![path, lang, file_hash, size_bytes, now],
         )?;
 
-        Ok(self.conn.last_insert_rowid())
+        self.get_file_id(path)?
+            .ok_or_else(|| crate::Error::Storage(format!("Missing file_id after upsert: {}", path)))
     }
 
     /// Get file ID by path
@@ -300,6 +301,20 @@ impl Storage {
                 .execute("DELETE FROM files WHERE file_id = ?1", params![file_id])?;
         }
         Ok(())
+    }
+
+    /// Delete a file and return the chunk IDs that were removed.
+    ///
+    /// This is useful for keeping secondary indexes (BM25/HNSW) in sync.
+    pub fn delete_file_returning_chunk_ids(&self, path: &str) -> Result<Vec<i64>> {
+        let Some(file_id) = self.get_file_id(path)? else {
+            return Ok(Vec::new());
+        };
+
+        let chunk_ids = self.delete_chunks_for_file(file_id)?;
+        self.conn
+            .execute("DELETE FROM files WHERE file_id = ?1", params![file_id])?;
+        Ok(chunk_ids)
     }
 
     /// Insert a chunk

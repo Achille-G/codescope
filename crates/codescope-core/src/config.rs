@@ -123,7 +123,7 @@ pub struct EmbeddingConfig {
 }
 
 fn default_model_id() -> String {
-    "all-MiniLM-L6-v2".to_string()
+    "paraphrase-multilingual-MiniLM-L12-v2".to_string()
 }
 
 impl Default for EmbeddingConfig {
