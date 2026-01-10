@@ -10,6 +10,9 @@ pub enum Error {
     #[error("Parse error: {0}")]
     Parse(String),
 
+    #[error("Tree-sitter error: {0}")]
+    TreeSitter(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 

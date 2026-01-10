@@ -10,7 +10,7 @@ Tree-sitter based AST parsing and code chunking for semantic understanding.
 
 ### 3.1 Set Up Tree-sitter Infrastructure ✅
 
-**Status**: Done (basic)
+**Status**: Done
 
 **Files**:
 - `crates/codescope-parser/src/parser.rs`
@@ -22,14 +22,14 @@ Tree-sitter based AST parsing and code chunking for semantic understanding.
 - Parser pool for concurrency
 
 **Remaining Work**:
-- [ ] Fix tree-sitter version compatibility
-- [ ] Test all languages
+- [x] Fix tree-sitter version compatibility
+- [x] Test all languages
 
 ---
 
 ### 3.2 Implement AST-based Chunking ✅
 
-**Status**: Done (basic)
+**Status**: Done
 
 **Files**:
 - `crates/codescope-parser/src/chunk.rs`
@@ -66,20 +66,20 @@ Tree-sitter based AST parsing and code chunking for semantic understanding.
 
 ---
 
-### 3.4 Implement Chunk Normalization ⚪
+### 3.4 Implement Chunk Normalization ✅
 
-**Status**: Pending
+**Status**: Done
 
 **Tasks**:
-- [ ] Whitespace normalization
-- [ ] Comment preservation
-- [ ] Symbol name extraction
-- [ ] Parent-child relationships
+- [x] Whitespace normalization
+- [x] Comment preservation
+- [x] Symbol name extraction
+- [x] Parent-child relationships
 
 ---
 
 ## Deliverables
 
 - [x] Chunker structure created
-- [ ] Correct boundaries for all languages
-- [ ] Tests for each language
+- [x] Correct boundaries for all languages
+- [x] Tests for each language

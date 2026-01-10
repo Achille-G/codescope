@@ -73,6 +73,7 @@ impl Chunk {
         end_line: u32,
         content: String,
     ) -> Self {
+        let content = normalize_content(&content);
         Self {
             symbol,
             kind,
@@ -104,6 +105,34 @@ impl Chunk {
     }
 }
 
+fn normalize_content(content: &str) -> String {
+    if content.is_empty() {
+        return String::new();
+    }
+
+    let normalized = content.replace("\r\n", "\n").replace('\r', "\n");
+    let lines: Vec<String> = normalized
+        .lines()
+        .map(|line| line.trim_end_matches(|c| c == ' ' || c == '\t').to_string())
+        .collect();
+
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let mut start = 0;
+    while start < lines.len() && lines[start].trim().is_empty() {
+        start += 1;
+    }
+
+    let mut end = lines.len();
+    while end > start && lines[end - 1].trim().is_empty() {
+        end -= 1;
+    }
+
+    lines[start..end].join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,5 +156,12 @@ mod tests {
     fn test_chunk_line_count() {
         let chunk = Chunk::new(None, ChunkKind::Block, 1, 10, "".to_string());
         assert_eq!(chunk.line_count(), 10);
+    }
+
+    #[test]
+    fn test_chunk_normalization() {
+        let content = "\nline1  \r\nline2\t\r\n\n";
+        let chunk = Chunk::new(None, ChunkKind::Block, 1, 2, content.to_string());
+        assert_eq!(chunk.content, "line1\nline2");
     }
 }
