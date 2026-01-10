@@ -1,8 +1,16 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="codescope - Structural Code Search" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Achille-G/codescope/actions/workflows/ci.yml">
+    <img src="https://github.com/Achille-G/codescope/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+</p>
+
 # codescope
 
 Fast, offline, multi-OS CLI tool for structural and semantic code search. Built for AI agents.
-
-[![CI](https://github.com/user/codescope/actions/workflows/ci.yml/badge.svg)](https://github.com/user/codescope/actions/workflows/ci.yml)
 
 ## Features
 
@@ -18,7 +26,7 @@ Fast, offline, multi-OS CLI tool for structural and semantic code search. Built 
 ### From Source
 
 ```bash
-git clone https://github.com/user/codescope
+git clone https://github.com/Achille-G/codescope
 cd codescope
 cargo build --release
 ```
