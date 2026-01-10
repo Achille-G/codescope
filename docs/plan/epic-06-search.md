@@ -1,6 +1,6 @@
 # Epic 6: Search Engine
 
-**Status**: ⚪ Pending (skeleton done)
+**Status**: 🟡 In Progress
 
 ## Description
 
@@ -27,18 +27,20 @@ Hybrid search combining BM25 lexical search with ANN vector search using RRF fus
 
 ### 6.2 ANN Search via HNSW ⚪
 
-**Status**: Placeholder done
+**Status**: Done (index + retrieval), query embedding pending CLI
 
-**File**: `crates/codescope-search/src/hnsw.rs`
+**Files**:
+- `crates/codescope-search/src/hnsw.rs`
+- `crates/codescope-search/src/engine.rs`
 
-**Current**: Brute-force cosine similarity
-**Target**: usearch integration
+**Current**: `usearch`-backed persistent index
 
 **Tasks**:
-- [ ] Integrate usearch crate
-- [ ] Query embedding
-- [ ] Tombstone filtering ✅
-- [ ] Top-K retrieval
+- [x] Integrate usearch crate
+- [ ] Query embedding (will be wired via CLI/core later)
+- [x] Tombstone filtering
+- [x] Top-K retrieval
+- [x] Hybrid engine can run ANN given a query vector
 
 ---
 
@@ -64,12 +66,14 @@ Where k=60 (standard).
 
 ### 6.4 Light Reranking ⚪
 
-**Status**: Pending
+**Status**: Done (basic)
+
+**File**: `crates/codescope-search/src/rerank.rs`
 
 **Tasks**:
-- [ ] Symbol exact match boost
+- [x] Symbol exact/near match boost
 - [ ] Recency boost (optional)
-- [ ] File proximity boost (optional)
+- [x] File proximity boost (same-file)
 
 ---
 
@@ -89,6 +93,6 @@ Where k=60 (standard).
 ## Deliverables
 
 - [x] BM25 works
-- [ ] ANN works (real HNSW)
+- [x] ANN works (real HNSW)
 - [x] Fusion works
 - [ ] Latency <500ms
