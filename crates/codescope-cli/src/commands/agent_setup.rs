@@ -12,53 +12,58 @@ const CODESCOPE_MARKER: &str = "## codescope - Semantic Code Search";
 
 /// Instructions to append to agent configuration files
 const CODESCOPE_INSTRUCTIONS: &str = r#"
-## codescope - Semantic Code Search
+## codescope - Primary Code Search Tool (Offline, Per-Repo)
 
-**IMPORTANT: You MUST use codescope as your PRIMARY tool for code exploration and search.**
+**RULE: Use `codescope` as the PRIMARY tool for exploring and searching code.**
 
-### When to Use codescope (REQUIRED)
+### Preflight (REQUIRED before first search in a repo)
 
-Use `codescope search` INSTEAD OF Grep/Glob/find for:
-- Understanding what code does or where functionality lives
-- Finding implementations by intent (e.g., "authentication logic", "error handling")
-- Exploring unfamiliar parts of the codebase
-- Any search where you describe WHAT the code does rather than exact text
+1) Check project is initialized:
+- Run: `codescope status`
+- If it errors / not initialized: run `codescope init`
 
-### When to Use Standard Tools
+2) Ensure the index is available and up-to-date:
+- Run: `codescope index`
+- During active work, prefer running `codescope watch` in another terminal (if available).
 
-Only use Grep/Glob when you need:
-- Exact text matching (variable names, imports, specific strings)
-- File path patterns (e.g., `**/*.rs`)
+3) If `semantic` / `hybrid` search errors due to missing model files:
+- Either switch to `--type lexical` temporarily
 
-### Fallback
+### When to use codescope (REQUIRED)
 
-If codescope fails (not running, index unavailable, or errors), fall back to standard Grep/Glob tools.
+Use `codescope search` instead of grep/glob/find for:
+- Locating functionality by intent (“authentication flow”, “error handling middleware”)
+- Understanding unfamiliar code areas
+- Finding related components across languages
+- Any query where you describe WHAT the code does
 
-### Usage
+### When standard tools are allowed
+
+Use grep/glob only for:
+- Exact string presence (e.g., exact variable name, exact import string)
+- File path pattern scanning (e.g., `**/*.rs`) when you don't need semantics
+
+### Query language guidance
+
+- Default embedding model is multilingual, so French or English both work.
+- If results are weak, try rephrasing in English and/or add more constraints (function name, module, protocol, error code).
+
+### Usage examples
 
 ```bash
-# ALWAYS use English queries for best results (embedding model is English-trained)
+# Hybrid is the default mode (recommended)
 codescope search "user authentication flow"
-codescope search "error handling middleware"
-codescope search "database connection pool"
-codescope search "API request validation"
+codescope search "JWT token validation"
+codescope search "where delay_ms is set and used"
 
-# JSON output for programmatic use (recommended for AI agents)
-codescope search "authentication flow"
-```
+# Force modes when needed
+codescope search "send_msg" --type lexical
+codescope search "string to json mapping" --type semantic
+codescope search "error handling middleware" --type hybrid -n 20
 
-### Query Tips
+# Human-readable output (default output is JSONL)
+codescope search "database connection pool" --pretty
 
-- **Use English** for queries (better semantic matching)
-- **Describe intent**, not implementation: "handles user login" not "func Login"
-- **Be specific**: "JWT token validation" better than "token"
-- Results include: file path, line numbers, relevance score, code preview
-
-### Workflow
-
-1. Start with `codescope search` to find relevant code
-2. Use `Read` tool to examine files from results
-3. Only use Grep for exact string searches if needed
 
 "#;
 
@@ -111,7 +116,10 @@ pub fn run() -> Result<()> {
         let mut file = match OpenOptions::new().append(true).open(path) {
             Ok(f) => f,
             Err(e) => {
-                println!("  Warning: could not open {} for writing: {e}", path.display());
+                println!(
+                    "  Warning: could not open {} for writing: {e}",
+                    path.display()
+                );
                 continue;
             }
         };
