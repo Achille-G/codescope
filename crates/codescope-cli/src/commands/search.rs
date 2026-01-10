@@ -7,6 +7,8 @@ use std::env;
 use std::str::FromStr;
 use tracing::info;
 
+use crate::commands::errors::NoResultsError;
+
 pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
@@ -71,6 +73,10 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
         for r in &results.results {
             println!("{}", r.to_jsonl());
         }
+    }
+
+    if results.results.is_empty() {
+        return Err(anyhow::Error::new(NoResultsError));
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 # Epic 7: CLI Interface
 
-**Status**: ⚪ Pending (skeleton done)
+**Status**: 🟡 In Progress (commands functional, more polish pending)
 
 ## Description
 
@@ -10,7 +10,7 @@ User-facing CLI with all commands, progress reporting, and proper error handling
 
 ### 7.1 Command Implementation ✅
 
-**Status**: Done (skeleton)
+**Status**: Done (wired)
 
 **Files**: `crates/codescope-cli/src/commands/*.rs`
 
@@ -22,27 +22,27 @@ User-facing CLI with all commands, progress reporting, and proper error handling
 - [x] `codescope clean [--yes]`
 
 **Remaining**:
-- [ ] Wire up actual indexing pipeline
-- [ ] Wire up actual search
+- [x] Wire up actual indexing pipeline
+- [x] Wire up actual search (lexical always; semantic/hybrid require local model)
 - [ ] Add `--quiet` and `--verbose` global flags ✅
 
 ---
 
 ### 7.2 Progress Reporting ⚪
 
-**Status**: Skeleton done
+**Status**: Done (basic)
 
 **Tasks**:
 - [x] indicatif spinner
-- [ ] Indexing progress bar
-- [ ] File count / chunk count
-- [ ] ETA for large repos
+- [x] Indexing progress bar
+- [x] File count / chunk count
+- [x] ETA for large repos
 
 ---
 
 ### 7.3 Error Handling ✅
 
-**Status**: Done (basic)
+**Status**: Done
 
 **Features**:
 - Clear error messages via anyhow
@@ -76,6 +76,6 @@ User-facing CLI with all commands, progress reporting, and proper error handling
 ## Deliverables
 
 - [x] All commands exist
-- [ ] All commands functional
-- [ ] Progress bars work
-- [ ] JSONL output correct
+- [x] All commands functional (semantic/hybrid require model)
+- [x] Progress bars work
+- [x] JSONL output correct

@@ -43,7 +43,7 @@ codescope index
 codescope search "authentication middleware"
 
 # Search with options
-codescope search "error handling" -n 20 --pretty --type semantic
+codescope search "error handling" -n 20 --pretty --type lexical
 ```
 
 ## Commands
@@ -55,6 +55,8 @@ codescope search "error handling" -n 20 --pretty --type semantic
 | `search` | Search the codebase |
 | `status` | Show project status and index stats |
 | `clean` | Remove index data |
+
+For a full CLI reference (flags, exit codes, examples, model setup), see `docs/cli.md`.
 
 ### Search Types
 

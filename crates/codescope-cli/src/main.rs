@@ -75,16 +75,20 @@ enum Commands {
     },
 }
 
-fn main() -> Result<()> {
+fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
 
     // Set up logging
     let filter = if cli.quiet {
         EnvFilter::new("error")
     } else if cli.verbose {
-        EnvFilter::new("debug")
+        EnvFilter::new(
+            "warn,codescope=debug,codescope_cli=debug,codescope_core=debug,codescope_search=debug,codescope_embed=debug,codescope_parser=debug",
+        )
     } else {
-        EnvFilter::new("info")
+        EnvFilter::new(
+            "warn,codescope=info,codescope_cli=info,codescope_core=info,codescope_search=info,codescope_embed=info,codescope_parser=info",
+        )
     };
 
     tracing_subscriber::fmt()
@@ -93,12 +97,12 @@ fn main() -> Result<()> {
         .init();
 
     // Dispatch to command handlers
-    match cli.command {
+    let result: Result<()> = match cli.command {
         Commands::Init { profile, force } => {
-            commands::init::run(&profile, force)?;
+            commands::init::run(&profile, force)
         }
         Commands::Index { all, jobs } => {
-            commands::index::run(all, jobs)?;
+            commands::index::run(all, jobs)
         }
         Commands::Search {
             query,
@@ -106,15 +110,26 @@ fn main() -> Result<()> {
             pretty,
             r#type,
         } => {
-            commands::search::run(&query, top, pretty, &r#type)?;
+            commands::search::run(&query, top, pretty, &r#type)
         }
         Commands::Status => {
-            commands::status::run()?;
+            commands::status::run()
         }
         Commands::Clean { yes } => {
-            commands::clean::run(yes)?;
+            commands::clean::run(yes)
+        }
+    };
+
+    match result {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(err) => {
+            if err.downcast_ref::<commands::errors::NoResultsError>().is_some() {
+                // Search had no results.
+                return std::process::ExitCode::from(2);
+            }
+
+            eprintln!("{err}");
+            std::process::ExitCode::from(1)
         }
     }
-
-    Ok(())
 }
