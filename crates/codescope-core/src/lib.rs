@@ -13,6 +13,7 @@ pub mod config;
 pub mod embedding;
 pub mod error;
 pub mod file_reader;
+pub mod memory;
 pub mod profile;
 pub mod project;
 pub mod walker;
@@ -25,6 +26,7 @@ pub use file_reader::{
     FileContent, FileParseConfig, FileParseError, FileParseOutcome, FileParser, FileReadConfig,
     FileReadError, FileReadOutcome, FileReader, FileSkip, FileSkipReason, ParsedFile,
 };
+pub use memory::{estimates, MemoryBudget, MemoryGuard, MemoryTracker};
 pub use profile::Profile;
 pub use project::Project;
 pub use walker::{FileEntry, Walker, WalkerConfig};
