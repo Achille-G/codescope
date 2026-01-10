@@ -1,5 +1,6 @@
 //! CLI command handlers
 
+pub mod agent_setup;
 pub mod clean;
 pub(crate) mod errors;
 pub mod index;
