@@ -15,4 +15,4 @@ pub mod storage;
 
 pub use error::{Error, Result};
 pub use result::SearchResult;
-pub use storage::Storage;
+pub use storage::{PooledStorage, Storage, StoragePool};
