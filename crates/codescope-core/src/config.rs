@@ -1,6 +1,6 @@
 //! Configuration management for codescope
 
-use crate::{Error, Profile, Result};
+use crate::{Profile, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

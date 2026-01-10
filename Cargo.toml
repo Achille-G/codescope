@@ -74,7 +74,27 @@ crossbeam-channel = "0.5"
 parking_lot = "0.12"
 dirs = "5"
 
+[workspace.dependencies.criterion]
+version = "0.5"
+features = ["html_reports"]
+
+[workspace.dependencies.tempfile]
+version = "3"
+
+[workspace.dependencies.rand]
+version = "0.8"
+
+[workspace.dependencies.assert_cmd]
+version = "2.0"
+
+[workspace.dependencies.predicates]
+version = "3.1"
+
 [profile.release]
 lto = true
 codegen-units = 1
 strip = true
+
+[profile.bench]
+lto = true
+codegen-units = 1
