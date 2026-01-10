@@ -32,11 +32,12 @@ impl Parser {
         let ts_lang = language.tree_sitter_language()?;
 
         let mut parsers = self.parsers.lock();
-        let parser = parsers.entry(language).or_insert_with(|| {
-            let mut p = tree_sitter::Parser::new();
-            p.set_language(&ts_lang).expect("Failed to set language");
-            p
-        });
+        let parser = parsers
+            .entry(language)
+            .or_insert_with(tree_sitter::Parser::new);
+        parser
+            .set_language(&ts_lang)
+            .map_err(|err| Error::TreeSitter(err.to_string()))?;
 
         parser
             .parse(content, None)
