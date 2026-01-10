@@ -1,0 +1,78 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/codescope-cli",
+    "crates/codescope-core",
+    "crates/codescope-parser",
+    "crates/codescope-embed",
+    "crates/codescope-search",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["codescope contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/user/codescope"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Internal crates
+codescope-core = { path = "crates/codescope-core" }
+codescope-parser = { path = "crates/codescope-parser" }
+codescope-embed = { path = "crates/codescope-embed" }
+codescope-search = { path = "crates/codescope-search" }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+indicatif = "0.17"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Storage
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Search
+tantivy = "0.22"
+
+# File walking
+ignore = "0.4"
+walkdir = "2"
+
+# Hashing
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Embeddings (ONNX)
+ort = "2.0.0-rc.11"
+tokenizers = "0.20"
+
+# HNSW
+usearch = "2"
+
+# Tree-sitter
+tree-sitter = "0.24"
+
+# Misc
+rayon = "1"
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
+dirs = "5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

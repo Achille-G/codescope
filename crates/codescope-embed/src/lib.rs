@@ -1,0 +1,20 @@
+//! codescope-embed: Modular embedding layer
+//!
+//! This crate provides:
+//! - `Embedder` trait for pluggable embedding models
+//! - `OnnxEmbedder` implementation using ONNX Runtime
+//! - Model registry for managing multiple models
+//! - Execution provider abstraction for CPU/GPU
+
+pub mod embedder;
+pub mod error;
+pub mod onnx;
+pub mod preprocess;
+pub mod provider;
+pub mod registry;
+
+pub use embedder::Embedder;
+pub use error::{Error, Result};
+pub use onnx::OnnxEmbedder;
+pub use provider::{EmbedderConfig, ExecutionProvider};
+pub use registry::ModelRegistry;

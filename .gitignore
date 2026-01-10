@@ -1,0 +1,22 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Codescope local data (per-project)
+.codescope/
+
+# ONNX models (downloaded separately)
+*.onnx
+
+# Test artifacts
+*.tmp
