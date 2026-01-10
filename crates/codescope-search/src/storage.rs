@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+static NEXT_MEMORY_DB_ID: AtomicUsize = AtomicUsize::new(0);
+
 /// SQLite connection pool for metadata storage.
 pub struct StoragePool {
     inner: Arc<StoragePoolInner>,
@@ -46,9 +48,10 @@ impl StoragePool {
 
     /// Open a pooled in-memory database (shared cache).
     pub fn open_memory(max_size: usize) -> Result<Self> {
+        let id = NEXT_MEMORY_DB_ID.fetch_add(1, Ordering::Relaxed);
         let inner = Arc::new(StoragePoolInner {
             path: StoragePath::Memory {
-                uri: "file:codescope_mem?mode=memory&cache=shared".to_string(),
+                uri: format!("file:codescope_mem_{}?mode=memory&cache=shared", id),
             },
             max_size: max_size.max(1),
             open: AtomicUsize::new(0),
