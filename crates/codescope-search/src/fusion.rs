@@ -91,14 +91,8 @@ impl WeightedFusion {
             let weight = self.weights.get(list_idx).copied().unwrap_or(1.0);
 
             // Normalize scores to [0, 1]
-            let max_score = list
-                .iter()
-                .map(|(_, s)| *s)
-                .fold(f32::MIN, f32::max);
-            let min_score = list
-                .iter()
-                .map(|(_, s)| *s)
-                .fold(f32::MAX, f32::min);
+            let max_score = list.iter().map(|(_, s)| *s).fold(f32::MIN, f32::max);
+            let min_score = list.iter().map(|(_, s)| *s).fold(f32::MAX, f32::min);
             let range = max_score - min_score;
 
             for (item, score) in list {

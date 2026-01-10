@@ -174,10 +174,8 @@ impl BM25Index {
         let searcher = self.reader.searcher();
 
         // Parse query against content and symbol fields
-        let query_parser = QueryParser::for_index(
-            &self.index,
-            vec![self.content_field, self.symbol_field],
-        );
+        let query_parser =
+            QueryParser::for_index(&self.index, vec![self.content_field, self.symbol_field]);
 
         let query = query_parser
             .parse_query(query)
@@ -222,10 +220,22 @@ mod tests {
 
         index.begin_write(50_000_000).unwrap();
         index
-            .add_document(1, "fn hello_world() { println!(\"Hello\"); }", Some("hello_world"), "function", "main.rs")
+            .add_document(
+                1,
+                "fn hello_world() { println!(\"Hello\"); }",
+                Some("hello_world"),
+                "function",
+                "main.rs",
+            )
             .unwrap();
         index
-            .add_document(2, "fn goodbye() { println!(\"Bye\"); }", Some("goodbye"), "function", "main.rs")
+            .add_document(
+                2,
+                "fn goodbye() { println!(\"Bye\"); }",
+                Some("goodbye"),
+                "function",
+                "main.rs",
+            )
             .unwrap();
         index.commit().unwrap();
 
@@ -240,7 +250,13 @@ mod tests {
 
         index.begin_write(50_000_000).unwrap();
         index
-            .add_document(1, "def calculate_sum(a, b): return a + b", Some("calculate_sum"), "function", "math.py")
+            .add_document(
+                1,
+                "def calculate_sum(a, b): return a + b",
+                Some("calculate_sum"),
+                "function",
+                "math.py",
+            )
             .unwrap();
         index.commit().unwrap();
 

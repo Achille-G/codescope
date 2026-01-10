@@ -39,3 +39,5 @@ Desktop.ini
 *.profdata
 coverage/
 tarpaulin-report.html
+
+AGENTS.md

@@ -168,7 +168,15 @@ impl Storage {
             INSERT INTO chunks (file_id, symbol, kind, start_line, end_line, content_hash, content)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
-            params![file_id, symbol, kind, start_line, end_line, content_hash, content],
+            params![
+                file_id,
+                symbol,
+                kind,
+                start_line,
+                end_line,
+                content_hash,
+                content
+            ],
         )?;
         Ok(self.conn.last_insert_rowid())
     }
@@ -266,11 +274,9 @@ impl Storage {
     pub fn get_kv(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let value = self
             .conn
-            .query_row(
-                "SELECT value FROM kv WHERE key = ?1",
-                params![key],
-                |row| row.get(0),
-            )
+            .query_row("SELECT value FROM kv WHERE key = ?1", params![key], |row| {
+                row.get(0)
+            })
             .optional()?;
         Ok(value)
     }
@@ -291,9 +297,9 @@ impl Storage {
         let chunk_count: i64 = self
             .conn
             .query_row("SELECT COUNT(*) FROM chunks", [], |row| row.get(0))?;
-        let tombstone_count: i64 = self
-            .conn
-            .query_row("SELECT COUNT(*) FROM tombstones", [], |row| row.get(0))?;
+        let tombstone_count: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM tombstones", [], |row| row.get(0))?;
 
         Ok(StorageStats {
             file_count: file_count as usize,

@@ -5,13 +5,24 @@
 //! - Profile handling (light/default/heavy)
 //! - Pipeline orchestration
 //! - .codescope/ directory management
+//! - File discovery and walking
+//! - Change detection for incremental indexing
 
+pub mod change_detector;
 pub mod config;
 pub mod error;
-pub mod project;
+pub mod file_reader;
 pub mod profile;
+pub mod project;
+pub mod walker;
 
+pub use change_detector::{ChangeDetector, Changes, FileState};
 pub use config::Config;
 pub use error::{Error, Result};
-pub use project::Project;
+pub use file_reader::{
+    FileContent, FileParseConfig, FileParseError, FileParseOutcome, FileParser, FileReadConfig,
+    FileReadError, FileReadOutcome, FileReader, FileSkip, FileSkipReason, ParsedFile,
+};
 pub use profile::Profile;
+pub use project::Project;
+pub use walker::{FileEntry, Walker, WalkerConfig};

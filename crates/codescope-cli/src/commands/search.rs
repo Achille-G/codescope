@@ -7,9 +7,8 @@ use std::env;
 pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
-    let _project = Project::find(&current_dir).context(
-        "Not in a codescope project. Run 'codescope init' first.",
-    )?;
+    let _project = Project::find(&current_dir)
+        .context("Not in a codescope project. Run 'codescope init' first.")?;
 
     // TODO: Implement actual search
     // For now, just show the query parameters
