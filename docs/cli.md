@@ -90,7 +90,11 @@ By default, codescope looks under:
 - `%USERPROFILE%\.codescope\models\<model_id>\model.onnx`
 - `%USERPROFILE%\.codescope\models\<model_id>\tokenizer.json`
 
-The default `model_id` is `all-MiniLM-L6-v2` (configured in `.codescope/config.toml` under `[embedding]`).
+The default `model_id` is `paraphrase-multilingual-MiniLM-L12-v2` (configured in `.codescope/config.toml` under `[embedding]`).
+
+Recommended models:
+- `paraphrase-multilingual-MiniLM-L12-v2`: better for non-English queries (French, etc.)
+- `all-MiniLM-L6-v2`: fast baseline, often strong for English
 
 You can override the model directory by setting `embedding.model_path` in `.codescope/config.toml` to the directory that contains `model.onnx` and `tokenizer.json` (absolute path recommended).
 

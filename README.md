@@ -93,7 +93,7 @@ codescope/
 │   ├── codescope-cli/      # CLI interface (clap)
 │   ├── codescope-core/     # Config, profiles, project management
 │   ├── codescope-parser/   # Tree-sitter parsing and chunking
-│   ├── codescope-embed/    # ONNX embeddings (MiniLM-L6-v2)
+│   ├── codescope-embed/    # ONNX embeddings
 │   └── codescope-search/   # Tantivy BM25 + HNSW ANN + RRF fusion
 └── .codescope/             # Per-project index (gitignored)
 ```

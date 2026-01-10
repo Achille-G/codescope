@@ -56,7 +56,23 @@ impl ModelRegistry {
 
     /// Register the default models
     fn register_defaults(&mut self) {
-        // all-MiniLM-L6-v2
+        // paraphrase-multilingual-MiniLM-L12-v2 (better multilingual semantic search; default)
+        self.register(ModelInfo {
+            id: "paraphrase-multilingual-MiniLM-L12-v2".to_string(),
+            name: "Paraphrase Multilingual MiniLM L12 v2".to_string(),
+            dimensions: 384,
+            max_seq_len: 256,
+            model_url: Some(
+                "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx".to_string()
+            ),
+            model_sha256: None, // TODO: Add actual checksum
+            tokenizer_url: Some(
+                "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json".to_string()
+            ),
+            is_default: true,
+        });
+
+        // all-MiniLM-L6-v2 (fast, strong baseline; good for English)
         self.register(ModelInfo {
             id: "all-MiniLM-L6-v2".to_string(),
             name: "MiniLM L6 v2".to_string(),
@@ -69,7 +85,7 @@ impl ModelRegistry {
             tokenizer_url: Some(
                 "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json".to_string()
             ),
-            is_default: true,
+            is_default: false,
         });
     }
 
@@ -150,7 +166,7 @@ mod tests {
 
         let default = registry.default_model();
         assert!(default.is_some());
-        assert_eq!(default.unwrap().id, "all-MiniLM-L6-v2");
+        assert_eq!(default.unwrap().id, "paraphrase-multilingual-MiniLM-L12-v2");
         assert_eq!(default.unwrap().dimensions, 384);
     }
 

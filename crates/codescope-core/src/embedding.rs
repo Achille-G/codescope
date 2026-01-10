@@ -80,10 +80,10 @@ mod tests {
         let resolved = resolve_embedding(&project).unwrap();
         assert!(resolved
             .model_path
-            .ends_with(Path::new("all-MiniLM-L6-v2").join("model.onnx")));
+            .ends_with(Path::new("paraphrase-multilingual-MiniLM-L12-v2").join("model.onnx")));
         assert!(resolved
             .tokenizer_path
-            .ends_with(Path::new("all-MiniLM-L6-v2").join("tokenizer.json")));
+            .ends_with(Path::new("paraphrase-multilingual-MiniLM-L12-v2").join("tokenizer.json")));
         assert_eq!(resolved.config.max_seq_len, 256);
     }
 }
