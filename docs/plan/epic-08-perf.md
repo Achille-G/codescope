@@ -60,15 +60,17 @@ tests/
 
 ---
 
-### 8.3 Profile Tuning ⚪
+### 8.3 Profile Tuning ✅
 
-**Status**: Pending
+**Status**: Complete
 
 **Tasks**:
-- [ ] Calibrate thread counts per profile
-- [ ] Calibrate batch sizes
-- [ ] Calibrate ANN parameters (ef_construction, M)
-- [ ] Validate on 8GB machine
+- [x] Calibrate thread counts per profile (read_threads, parse_threads)
+- [x] Calibrate batch sizes (embed_batch_size, chunk_queue_capacity)
+- [x] Calibrate ANN parameters (ef_construction, M, ef_search)
+- [x] Add memory estimation methods
+- [x] Add profile suggestion helper
+- [ ] Validate on 8GB machine (manual testing required)
 
 ---
 
