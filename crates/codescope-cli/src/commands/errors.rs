@@ -10,4 +10,3 @@ impl fmt::Display for NoResultsError {
 }
 
 impl std::error::Error for NoResultsError {}
-

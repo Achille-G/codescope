@@ -7,13 +7,8 @@ use codescope_parser::{Language, Parser};
 
 /// Helper to get fixture content
 fn fixture_content(fixture: &str) -> String {
-    let path = format!(
-        "{}/tests/fixtures/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        fixture
-    );
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("Failed to read fixture: {}", path))
+    let path = format!("{}/tests/fixtures/{}", env!("CARGO_MANIFEST_DIR"), fixture);
+    std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read fixture: {path}"))
 }
 
 #[test]
@@ -114,7 +109,8 @@ fn test_typescript_chunking_includes_jsdoc() {
 
     // Should include JSDoc comment or at least the function signature
     assert!(
-        login_method.content.contains("Login a user") || login_method.content.contains("async login"),
+        login_method.content.contains("Login a user")
+            || login_method.content.contains("async login"),
         "Should include method content: {}",
         login_method.content
     );
@@ -246,14 +242,23 @@ fn test_chunk_count_reasonable() {
     // TypeScript should have ~6-10 chunks
     let ts_content = fixture_content("typescript/sample.ts");
     let ts_chunks = parser.parse(&ts_content, Language::TypeScript).unwrap();
-    assert!(ts_chunks.len() >= 5, "TypeScript should have at least 5 chunks");
-    assert!(ts_chunks.len() <= 15, "TypeScript should have at most 15 chunks");
+    assert!(
+        ts_chunks.len() >= 5,
+        "TypeScript should have at least 5 chunks"
+    );
+    assert!(
+        ts_chunks.len() <= 15,
+        "TypeScript should have at most 15 chunks"
+    );
 
     // Python should have ~8-12 chunks
     let py_content = fixture_content("python/sample.py");
     let py_chunks = parser.parse(&py_content, Language::Python).unwrap();
     assert!(py_chunks.len() >= 6, "Python should have at least 6 chunks");
-    assert!(py_chunks.len() <= 15, "Python should have at most 15 chunks");
+    assert!(
+        py_chunks.len() <= 15,
+        "Python should have at most 15 chunks"
+    );
 
     // Rust should have ~10-15 chunks
     let rs_content = fixture_content("rust/sample.rs");

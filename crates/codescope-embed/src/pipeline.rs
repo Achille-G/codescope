@@ -60,16 +60,18 @@ impl EmbeddingPipeline {
         self.embed_texts_with_progress(texts, None::<fn(EmbeddingProgress)>)
     }
 
-    pub fn embed_texts_with_progress<F>(&self, texts: &[&str], mut on_progress: Option<F>) -> Result<Vec<Vec<f32>>>
+    pub fn embed_texts_with_progress<F>(
+        &self,
+        texts: &[&str],
+        mut on_progress: Option<F>,
+    ) -> Result<Vec<Vec<f32>>>
     where
         F: FnMut(EmbeddingProgress),
     {
         let mut out = Vec::with_capacity(texts.len());
-        self.embed_texts_streaming_with_progress(
-            texts,
-            &mut on_progress,
-            |embedding| out.push(embedding),
-        )?;
+        self.embed_texts_streaming_with_progress(texts, &mut on_progress, |embedding| {
+            out.push(embedding)
+        })?;
         Ok(out)
     }
 
@@ -128,11 +130,14 @@ mod tests {
         let mut calls = 0usize;
         let mut last_processed = 0usize;
         let embeddings = pipeline
-            .embed_texts_with_progress(&texts, Some(|p: EmbeddingProgress| {
-                calls += 1;
-                last_processed = p.processed;
-                assert_eq!(p.total, Some(texts.len()));
-            }))
+            .embed_texts_with_progress(
+                &texts,
+                Some(|p: EmbeddingProgress| {
+                    calls += 1;
+                    last_processed = p.processed;
+                    assert_eq!(p.total, Some(texts.len()));
+                }),
+            )
             .unwrap();
 
         assert_eq!(embeddings.len(), texts.len());

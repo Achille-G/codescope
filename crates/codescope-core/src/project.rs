@@ -36,8 +36,10 @@ impl Project {
         std::fs::create_dir_all(codescope_dir.join(TANTIVY_DIR))?;
 
         // Create config
-        let mut config = Config::default();
-        config.profile = profile;
+        let config = Config {
+            profile,
+            ..Default::default()
+        };
         config.save(&codescope_dir.join(CONFIG_FILE))?;
 
         // Create empty SQLite database

@@ -53,4 +53,3 @@ pub(crate) fn collect_indexable_files(project: &Project) -> Result<Vec<FileEntry
     files.retain(|entry| entry.has_supported_language());
     Ok(files)
 }
-

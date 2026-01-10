@@ -124,7 +124,7 @@ impl std::str::FromStr for SearchType {
             "lexical" | "bm25" => Ok(SearchType::Lexical),
             "semantic" | "vector" | "ann" => Ok(SearchType::Semantic),
             "hybrid" => Ok(SearchType::Hybrid),
-            _ => Err(format!("Unknown search type: {}", s)),
+            _ => Err(format!("Unknown search type: {s}")),
         }
     }
 }

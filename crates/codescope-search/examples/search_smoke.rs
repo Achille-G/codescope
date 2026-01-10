@@ -5,7 +5,7 @@ use xxhash_rust::xxh3::xxh3_64;
 
 fn main() -> Result<()> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    let root = std::env::temp_dir().join(format!("codescope_search_smoke_{}", now));
+    let root = std::env::temp_dir().join(format!("codescope_search_smoke_{now}"));
     std::fs::create_dir_all(&root)?;
 
     let codescope_dir = root.join(".codescope");

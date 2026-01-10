@@ -273,7 +273,7 @@ fn read_entry(entry: &FileEntry, config: &FileReadConfig) -> FileReadOutcome {
         });
     }
 
-    if bytes.iter().any(|b| *b == 0) {
+    if bytes.contains(&0) {
         debug!("Skipping binary file {:?}", entry.path);
         return FileReadOutcome::Skipped(FileSkip {
             path: entry.path.clone(),

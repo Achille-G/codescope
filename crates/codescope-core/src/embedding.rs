@@ -1,7 +1,9 @@
 //! Embedding pipeline integration for `codescope-core`.
 
 use crate::{Project, Result};
-use codescope_embed::{EmbedderConfig, EmbeddingPipeline, ExecutionProvider, ModelRegistry, OnnxEmbedder};
+use codescope_embed::{
+    EmbedderConfig, EmbeddingPipeline, ExecutionProvider, ModelRegistry, OnnxEmbedder,
+};
 use std::path::PathBuf;
 
 /// Resolved model artifact paths for the active project config.
@@ -16,8 +18,8 @@ pub struct ResolvedEmbedding {
 pub fn resolve_embedding(project: &Project) -> Result<ResolvedEmbedding> {
     let config = project.config();
 
-    let models_root = crate::project::models_dir()
-        .unwrap_or_else(|| project.codescope_dir().join("models"));
+    let models_root =
+        crate::project::models_dir().unwrap_or_else(|| project.codescope_dir().join("models"));
 
     let registry = ModelRegistry::new(models_root.clone());
     let model_info = registry.get(&config.embedding.model_id);
@@ -61,7 +63,11 @@ pub fn resolve_embedding(project: &Project) -> Result<ResolvedEmbedding> {
 /// - `<models_root>/<model_id>/tokenizer.json`
 pub fn build_embedding_pipeline(project: &Project) -> Result<EmbeddingPipeline> {
     let resolved = resolve_embedding(project)?;
-    let embedder = OnnxEmbedder::load(&resolved.model_path, &resolved.tokenizer_path, &resolved.config)?;
+    let embedder = OnnxEmbedder::load(
+        &resolved.model_path,
+        &resolved.tokenizer_path,
+        &resolved.config,
+    )?;
     Ok(EmbeddingPipeline::new(Box::new(embedder)).with_batch_size(resolved.config.batch_size))
 }
 

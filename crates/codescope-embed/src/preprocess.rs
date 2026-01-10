@@ -17,7 +17,10 @@ pub fn preprocess_code(text: &str, max_chars: usize) -> String {
     for ch in text.chars().take(max_chars) {
         // Handle CamelCase and ALLCAPS: insert a space before an uppercase letter when it follows
         // another letter (lowercase or uppercase) and we aren't already at a word boundary.
-        if ch.is_uppercase() && !result.is_empty() && !result.ends_with(' ') && (prev_was_lower || prev_was_upper)
+        if ch.is_uppercase()
+            && !result.is_empty()
+            && !result.ends_with(' ')
+            && (prev_was_lower || prev_was_upper)
         {
             result.push(' ');
         }

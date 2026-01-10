@@ -169,34 +169,34 @@ impl Walker {
         for pattern in DEFAULT_EXCLUSIONS {
             overrides
                 .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {}", e)))?;
+                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
         }
 
         // Add default file exclusions
         for pattern in DEFAULT_FILE_EXCLUSIONS {
             overrides
                 .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {}", e)))?;
+                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
         }
 
         // Add custom exclude patterns
         for pattern in &self.config.exclude_patterns {
             let negated = format!("!{}", pattern.trim_start_matches('!'));
-            overrides.add(&negated).map_err(|e| {
-                Error::Config(format!("Invalid exclude pattern '{}': {}", pattern, e))
-            })?;
+            overrides
+                .add(&negated)
+                .map_err(|e| Error::Config(format!("Invalid exclude pattern '{pattern}': {e}")))?;
         }
 
         // Add custom include patterns
         for pattern in &self.config.include_patterns {
-            overrides.add(pattern).map_err(|e| {
-                Error::Config(format!("Invalid include pattern '{}': {}", pattern, e))
-            })?;
+            overrides
+                .add(pattern)
+                .map_err(|e| Error::Config(format!("Invalid include pattern '{pattern}': {e}")))?;
         }
 
         let overrides = overrides
             .build()
-            .map_err(|e| Error::Config(format!("Failed to build overrides: {}", e)))?;
+            .map_err(|e| Error::Config(format!("Failed to build overrides: {e}")))?;
 
         builder.overrides(overrides);
 

@@ -113,32 +113,25 @@ fn main() -> std::process::ExitCode {
 
     // Dispatch to command handlers
     let result: Result<()> = match command {
-        Commands::Init { profile, force } => {
-            commands::init::run(&profile, force)
-        }
-        Commands::Index { all, jobs } => {
-            commands::index::run(all, jobs)
-        }
+        Commands::Init { profile, force } => commands::init::run(&profile, force),
+        Commands::Index { all, jobs } => commands::index::run(all, jobs),
         Commands::Search {
             query,
             top,
             pretty,
             r#type,
-        } => {
-            commands::search::run(&query, top, pretty, &r#type)
-        }
-        Commands::Status => {
-            commands::status::run()
-        }
-        Commands::Clean { yes } => {
-            commands::clean::run(yes)
-        }
+        } => commands::search::run(&query, top, pretty, &r#type),
+        Commands::Status => commands::status::run(),
+        Commands::Clean { yes } => commands::clean::run(yes),
     };
 
     match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(err) => {
-            if err.downcast_ref::<commands::errors::NoResultsError>().is_some() {
+            if err
+                .downcast_ref::<commands::errors::NoResultsError>()
+                .is_some()
+            {
                 // Search had no results.
                 return std::process::ExitCode::from(2);
             }

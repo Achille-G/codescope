@@ -1,10 +1,10 @@
 //! High-level search engine tying together storage + BM25 + ANN + fusion.
 
 use crate::bm25::BM25Index;
-use crate::fusion::{RRF, WeightedFusion};
+use crate::fusion::{WeightedFusion, RRF};
 use crate::hnsw::HNSWIndex;
-use crate::result::{SearchResult, SearchResults, SearchType};
 use crate::rerank;
+use crate::result::{SearchResult, SearchResults, SearchType};
 use crate::storage::{StoragePool, StorageStats};
 use crate::{Error, Result};
 use std::path::PathBuf;
@@ -56,12 +56,20 @@ impl SearchEngine {
         let storage = StoragePool::open(&paths.meta_db, pool_size.max(1))?;
         let bm25 = BM25Index::open(&paths.tantivy_dir)?;
         let hnsw = HNSWIndex::load(&paths.hnsw_index, mmap_hnsw)?;
-        Ok(Self { storage, bm25, hnsw })
+        Ok(Self {
+            storage,
+            bm25,
+            hnsw,
+        })
     }
 
     /// Create a search engine from already-open components (useful for tests).
     pub fn new(storage: StoragePool, bm25: BM25Index, hnsw: HNSWIndex) -> Self {
-        Self { storage, bm25, hnsw }
+        Self {
+            storage,
+            bm25,
+            hnsw,
+        }
     }
 
     pub fn stats(&self) -> Result<StorageStats> {
@@ -160,7 +168,7 @@ impl SearchEngine {
         for &(chunk_id, score) in hits {
             let record = storage
                 .get_chunk(chunk_id)?
-                .ok_or_else(|| Error::Search(format!("Missing chunk_id {} in storage", chunk_id)))?;
+                .ok_or_else(|| Error::Search(format!("Missing chunk_id {chunk_id} in storage")))?;
 
             let snippet = truncate_to_lines(&record.content, 12);
 
@@ -213,7 +221,12 @@ mod tests {
 
     fn seed_storage(storage: &Storage) -> (i64, i64) {
         let file_id = storage
-            .upsert_file("src/lib.rs", Some("rust"), &xxh3_64(b"file").to_le_bytes(), 10)
+            .upsert_file(
+                "src/lib.rs",
+                Some("rust"),
+                &xxh3_64(b"file").to_le_bytes(),
+                10,
+            )
             .unwrap();
 
         let chunk_hello = storage

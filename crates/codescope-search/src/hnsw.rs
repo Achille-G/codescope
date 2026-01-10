@@ -69,7 +69,7 @@ impl HNSWIndex {
 
         let key = chunk_id
             .try_into()
-            .map_err(|_| Error::Index(format!("Invalid chunk_id for index key: {}", chunk_id)))?;
+            .map_err(|_| Error::Index(format!("Invalid chunk_id for index key: {chunk_id}")))?;
         <f32 as VectorType>::add(&self.index, key, &vector)
             .map_err(|err| Error::Index(err.to_string()))?;
         Ok(())
@@ -189,9 +189,13 @@ impl HNSWIndex {
                 .to_str()
                 .ok_or_else(|| Error::Index("Invalid UTF-8 path for hnsw index".to_string()))?;
             if mmap {
-                index.view(path_str).map_err(|err| Error::Index(err.to_string()))?;
+                index
+                    .view(path_str)
+                    .map_err(|err| Error::Index(err.to_string()))?;
             } else {
-                index.load(path_str).map_err(|err| Error::Index(err.to_string()))?;
+                index
+                    .load(path_str)
+                    .map_err(|err| Error::Index(err.to_string()))?;
             }
 
             return Ok(Self {
@@ -376,8 +380,7 @@ fn looks_like_json(path: &Path) -> Result<bool> {
     Ok(content
         .iter()
         .copied()
-        .skip_while(|byte| byte.is_ascii_whitespace())
-        .next()
+        .find(|byte| !byte.is_ascii_whitespace())
         == Some(b'{'))
 }
 

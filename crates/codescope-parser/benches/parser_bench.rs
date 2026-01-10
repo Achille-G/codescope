@@ -24,8 +24,7 @@ export function compute_{i}(x: number): number {{
     return result;
 }}
 
-"#,
-            i = i
+"#
         ));
     }
     code
@@ -52,8 +51,7 @@ def compute_{i}(x: int) -> int:
         return result // 2
     return result
 
-"#,
-            i = i
+"#
         ));
     }
     code
@@ -81,8 +79,7 @@ pub fn compute_{i}(x: f64) -> f64 {{
     }}
 }}
 
-"#,
-            i = i
+"#
         ));
     }
     code
@@ -118,8 +115,7 @@ export class BenchmarkService {
         const value = this.data.get(input) ?? 0;
         return value * {i} + input.length;
     }}
-"#,
-            i = i
+"#
         ));
     }
 

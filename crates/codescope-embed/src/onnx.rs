@@ -25,11 +25,7 @@ pub struct OnnxEmbedder {
 
 impl OnnxEmbedder {
     /// Load an embedder from model and tokenizer paths
-    pub fn load(
-        model_path: &Path,
-        tokenizer_path: &Path,
-        config: &EmbedderConfig,
-    ) -> Result<Self> {
+    pub fn load(model_path: &Path, tokenizer_path: &Path, config: &EmbedderConfig) -> Result<Self> {
         if !model_path.exists() {
             return Err(Error::ModelNotFound(model_path.display().to_string()));
         }
@@ -67,12 +63,7 @@ impl OnnxEmbedder {
 
         let session = builder.commit_from_file(model_path)?;
 
-        let (output_name, dimensions) = pick_output(&session).unwrap_or_else(|| {
-            (
-                None,
-                384, // MiniLM default (fallback)
-            )
-        });
+        let (output_name, dimensions) = pick_output(&session).unwrap_or((None, 384));
 
         Ok(Self {
             dimensions,
@@ -128,7 +119,8 @@ impl Embedder for OnnxEmbedder {
         let attention_mask_name = find_input_name(session.inputs(), "attention_mask")
             .ok_or_else(|| Error::Inference("Model missing attention_mask".to_string()))?
             .to_string();
-        let token_type_name = find_input_name(session.inputs(), "token_type_ids").map(|s| s.to_string());
+        let token_type_name =
+            find_input_name(session.inputs(), "token_type_ids").map(|s| s.to_string());
 
         let mut inputs: Vec<(&str, Tensor<i64>)> = Vec::with_capacity(3);
         inputs.push((
@@ -141,7 +133,9 @@ impl Embedder for OnnxEmbedder {
         ));
 
         if let Some(name) = token_type_name.as_deref() {
-            let token_type_ids = encoding.token_type_ids.unwrap_or_else(|| vec![0; batch_size * seq_len]);
+            let token_type_ids = encoding
+                .token_type_ids
+                .unwrap_or_else(|| vec![0; batch_size * seq_len]);
             inputs.push((name, Tensor::from_array((shape, token_type_ids))?));
         }
 
@@ -154,14 +148,13 @@ impl Embedder for OnnxEmbedder {
             let dim = out_shape[1] as usize;
             if dim != self.dimensions {
                 return Err(Error::Inference(format!(
-                    "Model output dimension {} does not match expected {}",
-                    dim, self.dimensions
+                    "Model output dimension {dim} does not match expected {}",
+                    self.dimensions
                 )));
             }
             if batch != batch_size {
                 return Err(Error::Inference(format!(
-                    "Model output batch {} does not match input batch {}",
-                    batch, batch_size
+                    "Model output batch {batch} does not match input batch {batch_size}"
                 )));
             }
 
@@ -176,14 +169,13 @@ impl Embedder for OnnxEmbedder {
             let dim = out_shape[2] as usize;
             if dim != self.dimensions {
                 return Err(Error::Inference(format!(
-                    "Model output dimension {} does not match expected {}",
-                    dim, self.dimensions
+                    "Model output dimension {dim} does not match expected {}",
+                    self.dimensions
                 )));
             }
             if batch != batch_size || seq != seq_len {
                 return Err(Error::Inference(format!(
-                    "Model output shape [{}, {}] does not match input [{}, {}]",
-                    batch, seq, batch_size, seq_len
+                    "Model output shape [{batch}, {seq}] does not match input [{batch_size}, {seq_len}]"
                 )));
             }
             mean_pool_embeddings(out_data, &encoding.attention_mask, batch, seq, dim)
@@ -249,7 +241,11 @@ fn pick_output(session: &Session) -> Option<(Option<String>, usize)> {
     let mut best_name: Option<String> = None;
 
     for candidate in ["sentence_embedding", "embedding", "embeddings"] {
-        if let Some(out) = session.outputs().iter().find(|o| o.name().contains(candidate)) {
+        if let Some(out) = session
+            .outputs()
+            .iter()
+            .find(|o| o.name().contains(candidate))
+        {
             best_name = Some(out.name().to_string());
             break;
         }
@@ -262,8 +258,12 @@ fn pick_output(session: &Session) -> Option<(Option<String>, usize)> {
     }?;
 
     let dims = match chosen.dtype() {
-        ort::value::ValueType::Tensor { shape, .. } if shape.len() == 2 && shape[1] > 0 => shape[1] as usize,
-        ort::value::ValueType::Tensor { shape, .. } if shape.len() == 3 && shape[2] > 0 => shape[2] as usize,
+        ort::value::ValueType::Tensor { shape, .. } if shape.len() == 2 && shape[1] > 0 => {
+            shape[1] as usize
+        }
+        ort::value::ValueType::Tensor { shape, .. } if shape.len() == 3 && shape[2] > 0 => {
+            shape[2] as usize
+        }
         _ => 384,
     };
 
@@ -325,10 +325,7 @@ fn mean_pool_embeddings(
         }
     }
 
-    pooled
-        .chunks_exact(dim)
-        .map(|row| row.to_vec())
-        .collect()
+    pooled.chunks_exact(dim).map(|row| row.to_vec()).collect()
 }
 
 #[cfg(test)]

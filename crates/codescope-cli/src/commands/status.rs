@@ -45,8 +45,8 @@ pub fn run() -> Result<()> {
     println!("  Files:      {}", stats.file_count);
     println!("  Chunks:     {}", stats.chunk_count);
     println!("  Tombstones: {}", stats.tombstone_count);
-    println!("  BM25 docs:  {}", bm25_docs);
-    println!("  Vectors:    {}", vectors);
+    println!("  BM25 docs:  {bm25_docs}");
+    println!("  Vectors:    {vectors}");
 
     Ok(())
 }
