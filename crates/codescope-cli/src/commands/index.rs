@@ -59,9 +59,11 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
 
     pb.finish_and_clear();
 
-    let mut file_pb = ProgressBar::new(changes.files_to_index().count() as u64);
+    let file_pb = ProgressBar::new(changes.files_to_index().count() as u64);
     file_pb.set_style(
-        ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
+        ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} ETA {eta_precise} {msg}",
+        )
             .unwrap()
             .progress_chars("##-"),
     );
@@ -209,8 +211,11 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                 detector.update_file_state(&parsed.path)?;
                 file_pb.inc(1);
                 file_pb.set_message(format!(
-                    "{} files, {} chunks, {} vectors",
-                    indexed_files, indexed_chunks, indexed_vectors
+                    "{} files, {} chunks, {} vectors (last: {})",
+                    indexed_files,
+                    indexed_chunks,
+                    indexed_vectors,
+                    rel
                 ));
             }
             FileParseOutcome::Skipped(_) => {
