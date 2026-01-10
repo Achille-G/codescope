@@ -2,13 +2,13 @@
 //!
 //! These tests verify the CLI commands work correctly end-to-end.
 
-use assert_cmd::prelude::*;
+use assert_cmd::cargo::cargo_bin;
 use predicates::prelude::*;
 use std::process::Command;
 use tempfile::TempDir;
 
 fn codescope_cmd() -> Command {
-    Command::cargo_bin("codescope").expect("Failed to find codescope binary")
+    Command::new(cargo_bin("codescope"))
 }
 
 #[test]
