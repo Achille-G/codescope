@@ -4,6 +4,7 @@
 
 use crate::{Config, Error, Profile, Result};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 const CODESCOPE_DIR: &str = ".codescope";
 const CONFIG_FILE: &str = "config.toml";
@@ -133,13 +134,31 @@ impl Project {
         // Remove database
         let db_path = codescope_dir.join(META_DB);
         if db_path.exists() {
-            std::fs::remove_file(&db_path)?;
+            if let Err(err) = std::fs::remove_file(&db_path) {
+                tracing::warn!(
+                    "Failed to remove {}; attempting in-place reset (close DB viewers if this fails): {}",
+                    db_path.display(),
+                    err
+                );
+                Self::reset_database_in_place(&db_path)?;
+            }
+        }
+        // Best-effort cleanup of WAL/SHM files (may fail if another process holds the DB open).
+        for suffix in ["-wal", "-shm"] {
+            let sidecar = PathBuf::from(format!("{}{}", db_path.to_string_lossy(), suffix));
+            if sidecar.exists() {
+                let _ = std::fs::remove_file(&sidecar);
+            }
         }
 
         // Remove HNSW index
         let hnsw_path = codescope_dir.join(HNSW_INDEX);
         if hnsw_path.exists() {
             std::fs::remove_file(&hnsw_path)?;
+        }
+        let hnsw_meta = PathBuf::from(format!("{}.meta", hnsw_path.to_string_lossy()));
+        if hnsw_meta.exists() {
+            let _ = std::fs::remove_file(&hnsw_meta);
         }
 
         // Remove Tantivy directory
@@ -149,10 +168,33 @@ impl Project {
             std::fs::create_dir_all(&tantivy_path)?;
         }
 
-        // Recreate empty database
+        // Ensure database exists and has schema.
         Self::init_database(&db_path)?;
 
         tracing::info!("Cleaned codescope index");
+        Ok(())
+    }
+
+    fn reset_database_in_place(path: &Path) -> Result<()> {
+        let conn = rusqlite::Connection::open(path)?;
+        conn.busy_timeout(Duration::from_secs(2))?;
+
+        // If another process is holding the DB open, deleting the file can fail on Windows.
+        // In that case, clear the tables in-place so the rest of the pipeline can proceed.
+        conn.execute_batch(
+            r#"
+            PRAGMA foreign_keys = ON;
+
+            BEGIN IMMEDIATE;
+            DELETE FROM tombstones;
+            DELETE FROM chunks;
+            DELETE FROM files;
+            DELETE FROM kv;
+            DELETE FROM file_states;
+            COMMIT;
+            "#,
+        )?;
+
         Ok(())
     }
 

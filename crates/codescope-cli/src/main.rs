@@ -6,6 +6,17 @@ use tracing_subscriber::EnvFilter;
 
 mod commands;
 
+fn print_error(err: &anyhow::Error, verbose: bool) {
+    eprintln!("Error: {err}");
+    for cause in err.chain().skip(1) {
+        eprintln!("  Caused by: {cause}");
+    }
+    if verbose {
+        eprintln!();
+        eprintln!("{err:?}");
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "codescope")]
 #[command(author, version, about = "Fast offline code search for AI agents", long_about = None)]
@@ -76,12 +87,16 @@ enum Commands {
 }
 
 fn main() -> std::process::ExitCode {
-    let cli = Cli::parse();
+    let Cli {
+        verbose,
+        quiet,
+        command,
+    } = Cli::parse();
 
     // Set up logging
-    let filter = if cli.quiet {
+    let filter = if quiet {
         EnvFilter::new("error")
-    } else if cli.verbose {
+    } else if verbose {
         EnvFilter::new(
             "warn,codescope=debug,codescope_cli=debug,codescope_core=debug,codescope_search=debug,codescope_embed=debug,codescope_parser=debug",
         )
@@ -97,7 +112,7 @@ fn main() -> std::process::ExitCode {
         .init();
 
     // Dispatch to command handlers
-    let result: Result<()> = match cli.command {
+    let result: Result<()> = match command {
         Commands::Init { profile, force } => {
             commands::init::run(&profile, force)
         }
@@ -128,7 +143,7 @@ fn main() -> std::process::ExitCode {
                 return std::process::ExitCode::from(2);
             }
 
-            eprintln!("{err}");
+            print_error(&err, verbose);
             std::process::ExitCode::from(1)
         }
     }
