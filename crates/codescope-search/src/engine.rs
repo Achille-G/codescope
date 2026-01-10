@@ -4,6 +4,7 @@ use crate::bm25::BM25Index;
 use crate::fusion::{RRF, WeightedFusion};
 use crate::hnsw::HNSWIndex;
 use crate::result::{SearchResult, SearchResults, SearchType};
+use crate::rerank;
 use crate::storage::{StoragePool, StorageStats};
 use crate::{Error, Result};
 use std::path::PathBuf;
@@ -81,7 +82,8 @@ impl SearchEngine {
         let start = Instant::now();
 
         let hits = self.bm25.search(query, top_k)?;
-        let results = self.hydrate_results(&hits)?;
+        let mut results = self.hydrate_results(&hits)?;
+        rerank::rerank(query, &mut results);
 
         Ok(SearchResults {
             query: query.to_string(),
@@ -102,7 +104,8 @@ impl SearchEngine {
         let start = Instant::now();
 
         let hits = self.hnsw.search(query_embedding, top_k)?;
-        let results = self.hydrate_results(&hits)?;
+        let mut results = self.hydrate_results(&hits)?;
+        rerank::rerank(query, &mut results);
 
         Ok(SearchResults {
             query: query.to_string(),
@@ -138,7 +141,8 @@ impl SearchEngine {
         };
 
         let fused = fused.into_iter().take(top_k).collect::<Vec<_>>();
-        let results = self.hydrate_results(&fused)?;
+        let mut results = self.hydrate_results(&fused)?;
+        rerank::rerank(query, &mut results);
 
         Ok(SearchResults {
             query: query.to_string(),

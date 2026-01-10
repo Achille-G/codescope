@@ -11,6 +11,7 @@ pub mod error;
 pub mod engine;
 pub mod fusion;
 pub mod hnsw;
+pub mod rerank;
 pub mod result;
 pub mod storage;
 
