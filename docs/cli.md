@@ -96,6 +96,16 @@ Recommended models:
 - `paraphrase-multilingual-MiniLM-L12-v2`: better for non-English queries (French, etc.)
 - `all-MiniLM-L6-v2`: fast baseline, often strong for English
 
+Download (Windows PowerShell example):
+
+```powershell
+$model_id = "paraphrase-multilingual-MiniLM-L12-v2"
+$dst = Join-Path $env:USERPROFILE (".codescope\\models\\" + $model_id)
+New-Item -ItemType Directory -Force -Path $dst | Out-Null
+Invoke-WebRequest -Uri "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx" -OutFile (Join-Path $dst "model.onnx")
+Invoke-WebRequest -Uri "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json" -OutFile (Join-Path $dst "tokenizer.json")
+```
+
 You can override the model directory by setting `embedding.model_path` in `.codescope/config.toml` to the directory that contains `model.onnx` and `tokenizer.json` (absolute path recommended).
 
 ## `codescope status`
