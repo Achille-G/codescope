@@ -18,15 +18,15 @@ Benchmarking, testing, and performance optimization to meet SLOs.
 
 ## Tickets
 
-### 8.1 Benchmark Suite ⚪
+### 8.1 Benchmark Suite ✅
 
-**Status**: Pending
+**Status**: Complete
 
 **Tasks**:
-- [ ] Create `benches/` directory
-- [ ] Index time benchmarks (100, 1000, 10000 files)
-- [ ] Search latency percentiles
-- [ ] Memory profiling with heaptrack/valgrind
+- [x] Create `benches/` directory
+- [x] Index time benchmarks (100, 1000, 10000 files)
+- [x] Search latency percentiles
+- [ ] Memory profiling with heaptrack/valgrind (deferred - requires external tooling)
 
 **Reference Repos**:
 - Small: codescope itself
