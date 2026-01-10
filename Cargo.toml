@@ -13,8 +13,8 @@ version = "0.1.0"
 edition = "2021"
 authors = ["codescope contributors"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/user/codescope"
-rust-version = "1.78"
+repository = "https://github.com/Achille-G/codescope"
+rust-version = "1.85"
 
 [workspace.dependencies]
 # Internal crates
@@ -56,7 +56,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Embeddings (ONNX)
+# Embeddings (ONNX) - require Rust 1.85+ for edition2024 support
 ort = "2.0.0-rc.11"
 # Disable default features: `esaxx_fast` pulls a C++ build that forces `/MT` and
 # conflicts with ONNX Runtime (`/MD`) when linking (Windows/MSVC).
