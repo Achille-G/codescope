@@ -84,6 +84,9 @@ enum Commands {
         #[arg(short, long)]
         yes: bool,
     },
+
+    /// Configure AI agents to use codescope
+    AgentSetup,
 }
 
 fn main() -> std::process::ExitCode {
@@ -123,6 +126,7 @@ fn main() -> std::process::ExitCode {
         } => commands::search::run(&query, top, pretty, &r#type),
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
+        Commands::AgentSetup => commands::agent_setup::run(),
     };
 
     match result {
