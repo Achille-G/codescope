@@ -1,6 +1,6 @@
 # Epic 2: File Discovery & Walking
 
-**Status**: ⚪ Pending
+**Status**: 🟡 In Progress
 
 ## Description
 
@@ -8,41 +8,25 @@ Implement file discovery with gitignore support, change detection, and language 
 
 ## Tickets
 
-### 2.1 Implement File Walker ⚪
+### 2.1 Implement File Walker ✅
 
-**Status**: Pending
+**Status**: Done
 
 **Tasks**:
-- [ ] Use `ignore` crate for gitignore support
-- [ ] Support `.codescopeignore` custom patterns
-- [ ] Default exclusions (node_modules, .git, target, etc.)
-- [ ] Language detection by extension
+- [x] Use `ignore` crate for gitignore support
+- [x] Support `.codescopeignore` custom patterns
+- [x] Default exclusions (node_modules, .git, target, etc.)
+- [x] Language detection by extension
 
-**Implementation**:
-```rust
-// crates/codescope-core/src/walker.rs
-pub struct Walker {
-    root: PathBuf,
-    config: WalkerConfig,
-}
+**Files Created**:
+- `crates/codescope-core/src/walker.rs`
 
-impl Walker {
-    pub fn new(root: PathBuf) -> Self;
-    pub fn walk(&self) -> impl Iterator<Item = FileEntry>;
-}
-
-pub struct FileEntry {
-    pub path: PathBuf,
-    pub language: Option<Language>,
-    pub size: u64,
-}
-```
-
-**Acceptance Criteria**:
-- Respects .gitignore
-- Respects .codescopeignore
-- Skips default exclusions
-- Detects language correctly
+**Features**:
+- `Walker` struct with configurable options
+- `WalkerConfig` for max file size, symlinks, patterns
+- `FileEntry` with path, language, size
+- Default exclusions for common dirs/files
+- 4 unit tests passing
 
 ---
 
