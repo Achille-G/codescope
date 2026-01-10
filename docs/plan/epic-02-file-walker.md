@@ -30,38 +30,25 @@ Implement file discovery with gitignore support, change detection, and language 
 
 ---
 
-### 2.2 Implement Change Detection ⚪
+### 2.2 Implement Change Detection ✅
 
-**Status**: Pending
+**Status**: Done
 
 **Tasks**:
-- [ ] File hash comparison (xxhash)
-- [ ] mtime optimization (skip hash if mtime unchanged)
-- [ ] Deleted file detection
-- [ ] Track file state in SQLite
+- [x] File hash comparison (xxhash)
+- [x] mtime optimization (skip hash if mtime unchanged)
+- [x] Deleted file detection
+- [x] Track file state in SQLite
 
-**Implementation**:
-```rust
-pub struct ChangeDetector {
-    storage: Storage,
-}
+**Files Created**:
+- `crates/codescope-core/src/change_detector.rs`
 
-impl ChangeDetector {
-    pub fn detect_changes(&self, files: &[FileEntry]) -> Changes;
-}
-
-pub struct Changes {
-    pub added: Vec<PathBuf>,
-    pub modified: Vec<PathBuf>,
-    pub deleted: Vec<PathBuf>,
-}
-```
-
-**Acceptance Criteria**:
-- Detects new files
-- Detects modified files (by hash)
-- Detects deleted files
-- Incremental index in ~1s for small changes
+**Features**:
+- `ChangeDetector` with SQLite-backed state tracking
+- `Changes` struct with added/modified/deleted paths
+- XXH3 hashing for content comparison
+- mtime + size optimization (skip hash if unchanged)
+- 5 unit tests passing
 
 ---
 
