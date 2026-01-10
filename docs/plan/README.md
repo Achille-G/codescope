@@ -21,6 +21,11 @@ This folder contains the structured implementation plan with epics and tickets.
 | [Epic 7](./epic-07-cli.md)          | 🟢 Done    | CLI Interface                             |
 | [Epic 8](./epic-08-perf.md)         | 🟢 Done    | Performance & Testing                     |
 | [Epic 9](./epic-09-distribution.md) | ⚪ Pending | Asset Distribution                        |
+| [Epic 10](./epic-10-daemon.md)      | ⚪ Pending | Watch/Daemon (Continuous Indexing)        |
+| [Epic 11](./epic-11-text-docs.md)   | ⚪ Pending | Text Documents (Beyond Code)              |
+| [Epic 12](./epic-12-ocr-and-binary-docs.md) | ⚪ Pending | PDF/Image Ingestion (Extraction + OCR) |
+| [Epic 13](./epic-13-external-embedding-providers.md) | ⚪ Pending | External Embedding Providers (Optional) |
+| [Epic 14](./epic-14-postgres-pgvector.md) | ⚪ Pending | Postgres + pgvector Backend (Concurrent / Shared Index) |
 
 ## Implementation Phases
 
@@ -50,7 +55,7 @@ This folder contains the structured implementation plan with epics and tickets.
 ## Technical Decisions
 
 - **Language**: Rust
-- **Embedding Model**: MiniLM-L6-v2 (modular, swappable)
+- **Embedding Model**: swappable (local ONNX default, configurable)
 - **Grammars**: Compiled into binary
 - **First Target**: TypeScript/JavaScript (web-first)
 - **GPU**: CPU-first with modular ExecutionProvider

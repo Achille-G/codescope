@@ -13,12 +13,14 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 **Status**: Pending
 
 **Tasks**:
+
 - [ ] Host ONNX model on GitHub Releases or CDN
 - [ ] Versioned URLs with SHA256 checksums
 - [ ] Mirror fallbacks for reliability
 - [ ] Document manual download for offline install
 
-**Model**: all-MiniLM-L6-v2
+**Model**: paraphrase-multilingual-MiniLM-L12-v2
+
 - model.onnx (~80MB)
 - tokenizer.json (~500KB)
 
@@ -31,11 +33,13 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 **Decision**: Compile into binary (no runtime download)
 
 **Tasks**:
+
 - [ ] Build script fetches grammars during `cargo build`
 - [ ] Verify all grammars compile
 - [ ] Test cross-platform builds
 
 **Grammars**:
+
 - tree-sitter-typescript
 - tree-sitter-javascript
 - tree-sitter-python
@@ -55,6 +59,7 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 **Status**: Pending
 
 **Platforms**:
+
 - [ ] Linux x86_64
 - [ ] Linux ARM64
 - [ ] macOS x86_64
@@ -62,6 +67,7 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 - [ ] Windows x86_64
 
 **Channels**:
+
 - [ ] GitHub Releases
 - [ ] `cargo install codescope`
 - [ ] Homebrew formula (macOS)
@@ -74,6 +80,7 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 **Status**: Pending
 
 **`codescope init` Flow**:
+
 1. Create .codescope/ directory ✅
 2. Check for model in ~/.codescope/models/
 3. If missing, download with progress bar
@@ -81,6 +88,7 @@ Model hosting, grammar bundling, and binary distribution for all platforms.
 5. Ready to index
 
 **Offline Mode**:
+
 - User can pre-place model in `~/.codescope/models/`
 - Clear error message if download fails
 
