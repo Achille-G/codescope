@@ -56,8 +56,8 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Embeddings (ONNX)
-ort = "2.0.0-rc.11"
+# Embeddings (ONNX) - pinned to rc.10 for Rust 1.78 compatibility
+ort = "=2.0.0-rc.10"
 # Disable default features: `esaxx_fast` pulls a C++ build that forces `/MT` and
 # conflicts with ONNX Runtime (`/MD`) when linking (Windows/MSVC).
 tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
