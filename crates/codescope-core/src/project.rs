@@ -158,12 +158,9 @@ impl Project {
 
     /// Initialize the SQLite database schema
     fn init_database(path: &Path) -> Result<()> {
-        use std::io::Write;
-
-        // For now, just create an empty file
-        // The actual schema will be created by codescope-search
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(b"")?;
+        // Initialize schema via the storage layer.
+        // Dropping the connection is enough; schema changes are persisted.
+        let _storage = codescope_search::Storage::open(path)?;
         Ok(())
     }
 }

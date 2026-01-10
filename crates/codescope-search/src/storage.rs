@@ -1,8 +1,147 @@
 //! SQLite storage for metadata
+use crate::Result;
+use parking_lot::{Condvar, Mutex};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
+use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::{Error, Result};
-use rusqlite::{params, Connection, OptionalExtension};
-use std::path::Path;
+/// SQLite connection pool for metadata storage.
+pub struct StoragePool {
+    inner: Arc<StoragePoolInner>,
+}
+
+struct StoragePoolInner {
+    path: StoragePath,
+    max_size: usize,
+    open: AtomicUsize,
+    idle: Mutex<Vec<Connection>>,
+    available: Condvar,
+}
+
+#[derive(Clone)]
+enum StoragePath {
+    File(PathBuf),
+    Memory { uri: String },
+}
+
+impl StoragePool {
+    /// Open a pooled storage database.
+    pub fn open(path: &Path, max_size: usize) -> Result<Self> {
+        let inner = Arc::new(StoragePoolInner {
+            path: StoragePath::File(path.to_path_buf()),
+            max_size: max_size.max(1),
+            open: AtomicUsize::new(0),
+            idle: Mutex::new(Vec::new()),
+            available: Condvar::new(),
+        });
+
+        let pool = Self { inner };
+        let conn = pool.open_connection()?;
+        Storage::from_connection(conn)?.return_to_pool(&pool.inner);
+        Ok(pool)
+    }
+
+    /// Open a pooled in-memory database (shared cache).
+    pub fn open_memory(max_size: usize) -> Result<Self> {
+        let inner = Arc::new(StoragePoolInner {
+            path: StoragePath::Memory {
+                uri: "file:codescope_mem?mode=memory&cache=shared".to_string(),
+            },
+            max_size: max_size.max(1),
+            open: AtomicUsize::new(0),
+            idle: Mutex::new(Vec::new()),
+            available: Condvar::new(),
+        });
+
+        let pool = Self { inner };
+        let conn = pool.open_connection()?;
+        Storage::from_connection(conn)?.return_to_pool(&pool.inner);
+        Ok(pool)
+    }
+
+    /// Get a storage connection from the pool.
+    pub fn get(&self) -> Result<PooledStorage> {
+        let mut idle = self.inner.idle.lock();
+
+        loop {
+            if let Some(conn) = idle.pop() {
+                return Ok(PooledStorage {
+                    storage: Some(Storage { conn }),
+                    inner: Arc::clone(&self.inner),
+                });
+            }
+
+            let open = self.inner.open.load(Ordering::Relaxed);
+            if open < self.inner.max_size {
+                self.inner.open.fetch_add(1, Ordering::Relaxed);
+                drop(idle);
+
+                match self.open_connection().and_then(Storage::from_connection) {
+                    Ok(storage) => {
+                        return Ok(PooledStorage {
+                            storage: Some(storage),
+                            inner: Arc::clone(&self.inner),
+                        })
+                    }
+                    Err(err) => {
+                        self.inner.open.fetch_sub(1, Ordering::Relaxed);
+                        return Err(err);
+                    }
+                }
+            }
+
+            self.inner.available.wait(&mut idle);
+        }
+    }
+
+    fn open_connection(&self) -> Result<Connection> {
+        let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+
+        let conn = match &self.inner.path {
+            StoragePath::File(path) => Connection::open_with_flags(path, flags)?,
+            StoragePath::Memory { uri } => Connection::open_with_flags(
+                uri,
+                flags | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
+            )?,
+        };
+
+        conn.busy_timeout(Duration::from_millis(250))?;
+        Ok(conn)
+    }
+}
+
+/// A pooled storage connection that returns to the pool on drop.
+pub struct PooledStorage {
+    storage: Option<Storage>,
+    inner: Arc<StoragePoolInner>,
+}
+
+impl Deref for PooledStorage {
+    type Target = Storage;
+
+    fn deref(&self) -> &Self::Target {
+        self.storage.as_ref().expect("pooled storage missing")
+    }
+}
+
+impl DerefMut for PooledStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.storage.as_mut().expect("pooled storage missing")
+    }
+}
+
+impl Drop for PooledStorage {
+    fn drop(&mut self) {
+        if let Some(storage) = self.storage.take() {
+            storage.return_to_pool(&self.inner);
+        }
+    }
+}
 
 /// SQLite-based metadata storage
 pub struct Storage {
@@ -13,17 +152,25 @@ impl Storage {
     /// Open or create a storage database
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open(path)?;
-        let storage = Self { conn };
-        storage.init_schema()?;
-        Ok(storage)
+        Self::from_connection(conn)
     }
 
     /// Open an in-memory database (for testing)
     pub fn open_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
+        Self::from_connection(conn)
+    }
+
+    fn from_connection(conn: Connection) -> Result<Self> {
         let storage = Self { conn };
         storage.init_schema()?;
         Ok(storage)
+    }
+
+    fn return_to_pool(self, pool: &StoragePoolInner) {
+        let mut idle = pool.idle.lock();
+        idle.push(self.conn);
+        pool.available.notify_one();
     }
 
     /// Initialize the database schema
@@ -186,7 +333,7 @@ impl Storage {
         // Get chunk IDs before deleting
         let mut stmt = self
             .conn
-            .prepare("SELECT chunk_id FROM chunks WHERE file_id = ?1")?;
+            .prepare_cached("SELECT chunk_id FROM chunks WHERE file_id = ?1")?;
         let chunk_ids: Vec<i64> = stmt
             .query_map(params![file_id], |row| row.get(0))?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -243,7 +390,7 @@ impl Storage {
 
     /// Get all chunk IDs (excluding tombstones)
     pub fn get_all_chunk_ids(&self) -> Result<Vec<i64>> {
-        let mut stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare_cached(
             r#"
             SELECT chunk_id FROM chunks
             WHERE chunk_id NOT IN (SELECT chunk_id FROM tombstones)
@@ -257,7 +404,7 @@ impl Storage {
 
     /// Get tombstone chunk IDs
     pub fn get_tombstones(&self) -> Result<Vec<i64>> {
-        let mut stmt = self.conn.prepare("SELECT chunk_id FROM tombstones")?;
+        let mut stmt = self.conn.prepare_cached("SELECT chunk_id FROM tombstones")?;
         let ids: Vec<i64> = stmt
             .query_map([], |row| row.get(0))?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -325,6 +472,24 @@ impl Storage {
         self.conn.execute("ROLLBACK", [])?;
         Ok(())
     }
+
+    /// Run a closure inside a SQLite transaction.
+    ///
+    /// Rolls back automatically if the closure returns an error.
+    pub fn transaction<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        self.conn.execute_batch("BEGIN TRANSACTION")?;
+
+        match f(&self.conn) {
+            Ok(result) => {
+                self.conn.execute_batch("COMMIT")?;
+                Ok(result)
+            }
+            Err(err) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(err)
+            }
+        }
+    }
 }
 
 /// A chunk record from the database
@@ -351,6 +516,38 @@ pub struct StorageStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_storage_pool_shared_state() {
+        let pool = StoragePool::open_memory(2).unwrap();
+
+        {
+            let storage = pool.get().unwrap();
+            storage
+                .upsert_file("a.rs", Some("rust"), b"h1", 1)
+                .unwrap();
+        }
+
+        let storage = pool.get().unwrap();
+        let stats = storage.stats().unwrap();
+        assert_eq!(stats.file_count, 1);
+    }
+
+    #[test]
+    fn test_storage_transaction_rollback() {
+        let storage = Storage::open_memory().unwrap();
+        let result: Result<()> = storage.transaction(|conn| {
+            conn.execute(
+                "INSERT INTO kv (key, value) VALUES (?1, ?2)",
+                params!["k", b"v"],
+            )?;
+            Err(Error::Storage("boom".to_string()))
+        });
+
+        assert!(result.is_err());
+        assert!(storage.get_kv("k").unwrap().is_none());
+    }
 
     #[test]
     fn test_storage_basic() {

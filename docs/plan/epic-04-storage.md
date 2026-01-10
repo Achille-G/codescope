@@ -52,13 +52,13 @@ CREATE TABLE kv (key TEXT PRIMARY KEY, value BLOB);
 
 ### 4.2 Implement SQLite Connection Pool ⚪
 
-**Status**: Pending
+**Status**: Done
 
 **Tasks**:
-- [ ] r2d2 or custom pool
-- [ ] WAL mode enabled ✅
-- [ ] Prepared statement caching
-- [ ] Transaction helpers ✅
+- [x] r2d2 or custom pool
+- [x] WAL mode enabled ✅
+- [x] Prepared statement caching
+- [x] Transaction helpers ✅
 
 ---
 
