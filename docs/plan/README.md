@@ -10,35 +10,39 @@ This folder contains the structured implementation plan with epics and tickets.
 
 ## Epics
 
-| Epic | Status | Description |
-|------|--------|-------------|
-| [Epic 1](./epic-01-scaffolding.md) | 🟡 In Progress | Project Scaffolding & Core Infrastructure |
-| [Epic 2](./epic-02-file-walker.md) | ⚪ Pending | File Discovery & Walking |
-| [Epic 3](./epic-03-parser.md) | ⚪ Pending | Parsing & Chunking |
-| [Epic 4](./epic-04-storage.md) | ⚪ Pending | Storage Layer |
-| [Epic 5](./epic-05-embedding.md) | ⚪ Pending | Embedding Layer |
-| [Epic 6](./epic-06-search.md) | ⚪ Pending | Search Engine |
-| [Epic 7](./epic-07-cli.md) | ⚪ Pending | CLI Interface |
-| [Epic 8](./epic-08-perf.md) | ⚪ Pending | Performance & Testing |
-| [Epic 9](./epic-09-distribution.md) | ⚪ Pending | Asset Distribution |
+| Epic                                | Status     | Description                               |
+| ----------------------------------- | ---------- | ----------------------------------------- |
+| [Epic 1](./epic-01-scaffolding.md)  | 🟢 Done    | Project Scaffolding & Core Infrastructure |
+| [Epic 2](./epic-02-file-walker.md)  | 🟢 Done    | File Discovery & Walking                  |
+| [Epic 3](./epic-03-parser.md)       | 🟢 Done    | Parsing & Chunking                        |
+| [Epic 4](./epic-04-storage.md)      | 🟢 Done    | Storage Layer                             |
+| [Epic 5](./epic-05-embedding.md)    | 🟢 Done    | Embedding Layer                           |
+| [Epic 6](./epic-06-search.md)       | 🟢 Done    | Search Engine                             |
+| [Epic 7](./epic-07-cli.md)          | 🟢 Done    | CLI Interface                             |
+| [Epic 8](./epic-08-perf.md)         | 🟢 Done    | Performance & Testing                     |
+| [Epic 9](./epic-09-distribution.md) | ⚪ Pending | Asset Distribution                        |
 
 ## Implementation Phases
 
 **Phase 1: Foundation** (Epics 1, 2, 4)
+
 - Skeleton compiling
 - File walking works
 - SQLite storage works
 
 **Phase 2: Core Pipeline** (Epics 3, 5)
+
 - Parsing produces chunks
 - Embeddings generated
 
 **Phase 3: Search** (Epic 6)
+
 - BM25 works
 - ANN works
 - Fusion works
 
 **Phase 4: Polish** (Epics 7, 8, 9)
+
 - CLI complete
 - Benchmarks pass
 - Distribution works
