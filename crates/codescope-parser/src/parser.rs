@@ -520,4 +520,18 @@ class Greeter:
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].kind, ChunkKind::Block);
     }
+
+    #[test]
+    fn test_fallback_chunking_overlap() {
+        let parser = Parser::new();
+        let lines: Vec<String> = (1..=600).map(|i| format!("line{}", i)).collect();
+        let content = lines.join("\n");
+
+        let chunks = parser.fallback_chunk(&content).unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].start_line, 1);
+        assert_eq!(chunks[0].end_line, 500);
+        assert_eq!(chunks[1].start_line, 451);
+        assert_eq!(chunks[1].end_line, 600);
+    }
 }
