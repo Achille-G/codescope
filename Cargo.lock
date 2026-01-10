@@ -278,6 +278,7 @@ name = "codescope-embed"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dirs",
  "ndarray 0.15.6",
  "ort",
  "parking_lot",
