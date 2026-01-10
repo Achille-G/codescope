@@ -24,7 +24,11 @@ impl Parser {
         }
 
         let tree = self.parse_tree(content, language)?;
-        self.extract_chunks(&tree, content, language)
+        let chunks = self.extract_chunks(&tree, content, language)?;
+        if chunks.is_empty() {
+            return self.fallback_chunk(content);
+        }
+        Ok(chunks)
     }
 
     /// Parse content into a tree-sitter tree
@@ -372,6 +376,26 @@ impl Default for Parser {
 mod tests {
     use super::*;
 
+    fn assert_has_kind(parser: &Parser, language: Language, content: &str, kind: ChunkKind) {
+        let chunks = parser.parse(content, language).unwrap();
+        assert!(
+            chunks.iter().any(|chunk| chunk.kind == kind),
+            "expected {:?} chunk for {:?}",
+            kind,
+            language
+        );
+    }
+
+    fn assert_fallback(parser: &Parser, language: Language, content: &str) {
+        let chunks = parser.parse(content, language).unwrap();
+        assert!(!chunks.is_empty(), "expected chunks for {:?}", language);
+        assert!(
+            chunks.iter().all(|chunk| chunk.kind == ChunkKind::Block),
+            "expected fallback chunks for {:?}",
+            language
+        );
+    }
+
     #[test]
     fn test_parse_typescript() {
         let parser = Parser::new();
@@ -398,6 +422,77 @@ class Greeter {
         let class = chunks.iter().find(|c| c.kind == ChunkKind::Class);
         assert!(class.is_some());
         assert_eq!(class.unwrap().symbol, Some("Greeter".to_string()));
+    }
+
+    #[test]
+    fn test_parse_all_languages() {
+        let parser = Parser::new();
+
+        assert_has_kind(
+            &parser,
+            Language::TypeScript,
+            "function hello() {}",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::JavaScript,
+            "function hello() {}",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::Tsx,
+            "const App = () => <div>Hello</div>;",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::Jsx,
+            "function App() { return <div />; }",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::Python,
+            "def hello():\n    return 1",
+            ChunkKind::Function,
+        );
+        assert_has_kind(&parser, Language::Rust, "fn hello() {}", ChunkKind::Function);
+        assert_has_kind(
+            &parser,
+            Language::Java,
+            "class Greeter { void hello() {} }",
+            ChunkKind::Class,
+        );
+        assert_has_kind(
+            &parser,
+            Language::C,
+            "int hello() { return 0; }",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::Cpp,
+            "int hello() { return 0; }",
+            ChunkKind::Function,
+        );
+        assert_has_kind(
+            &parser,
+            Language::Go,
+            "func hello() { }",
+            ChunkKind::Function,
+        );
+
+        assert_fallback(&parser, Language::Html, "<div><p>Hi</p></div>");
+        assert_fallback(&parser, Language::Css, ".a { color: red; }");
+        assert_fallback(
+            &parser,
+            Language::Scss,
+            "$color: red; .a { color: $color; }",
+        );
+        assert_fallback(&parser, Language::Json, "{ \"a\": 1 }");
+        assert_fallback(&parser, Language::Yaml, "a: 1");
     }
 
     #[test]
