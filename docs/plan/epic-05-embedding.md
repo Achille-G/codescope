@@ -40,7 +40,7 @@ pub trait Embedder: Send + Sync {
 - [x] ONNX Runtime integration via `ort` crate
 - [x] CPU execution provider
 - [x] ExecutionProvider enum for future GPU
-- [ ] Test with actual MiniLM model (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
+- [x] Test with actual MiniLM model (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
 - [x] Session caching verification (session/tokenizer stored in struct)
 - [x] Thread safety (session behind mutex + Send/Sync test)
 
@@ -56,7 +56,7 @@ pub trait Embedder: Send + Sync {
 - [x] HuggingFace tokenizers integration
 - [x] Max sequence length handling
 - [x] Batch padding
-- [ ] Test with actual tokenizer.json (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
+- [x] Test with actual tokenizer.json (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
 
 **Notes**:
 - Workspace uses `tokenizers` with `default-features = false, features = ["onig"]` to avoid MSVC `/MT` vs `/MD` link conflicts with ONNX Runtime.
