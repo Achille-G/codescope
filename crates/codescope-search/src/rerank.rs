@@ -21,14 +21,17 @@ pub fn rerank(query: &str, results: &mut Vec<SearchResult>) {
         let symbol_lower = symbol.to_lowercase();
 
         if !query_norm.is_empty() && query_norm == symbol_norm {
-            result.score += 0.25;
+            result.score *= 1.25;
             continue;
         }
 
-        if !symbol_norm.is_empty() && query_norm.contains(&symbol_norm) {
-            result.score += 0.10;
-        } else if query_lower.contains(&symbol_lower) {
-            result.score += 0.08;
+        if !query_norm.is_empty()
+            && !symbol_norm.is_empty()
+            && (query_norm.contains(&symbol_norm) || symbol_norm.contains(&query_norm))
+        {
+            result.score *= 1.10;
+        } else if query_lower.contains(&symbol_lower) || symbol_lower.contains(&query_lower) {
+            result.score *= 1.08;
         }
     }
 
@@ -37,7 +40,7 @@ pub fn rerank(query: &str, results: &mut Vec<SearchResult>) {
         let top_file = top.file.clone();
         for result in results.iter_mut().skip(1) {
             if result.file == top_file {
-                result.score += 0.05;
+                result.score *= 1.05;
             }
         }
     }
