@@ -1,6 +1,6 @@
 # Epic 5: Embedding Layer (MODULAR DESIGN)
 
-**Status**: ⚪ Pending (skeleton done)
+**Status**: 🟡 In Progress (implemented, needs model verification)
 
 ## Description
 
@@ -32,7 +32,7 @@ pub trait Embedder: Send + Sync {
 
 ### 5.2 Implement OnnxEmbedder ⚪
 
-**Status**: Skeleton done, needs testing
+**Status**: Done (CPU), needs real-model verification
 
 **File**: `crates/codescope-embed/src/onnx.rs`
 
@@ -40,33 +40,42 @@ pub trait Embedder: Send + Sync {
 - [x] ONNX Runtime integration via `ort` crate
 - [x] CPU execution provider
 - [x] ExecutionProvider enum for future GPU
-- [ ] Test with actual MiniLM model
-- [ ] Session caching verification
-- [ ] Thread safety testing
+- [ ] Test with actual MiniLM model (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
+- [x] Session caching verification (session/tokenizer stored in struct)
+- [x] Thread safety (session behind mutex + Send/Sync test)
 
 ---
 
 ### 5.3 Implement Tokenizer Abstraction ⚪
 
-**Status**: Skeleton done
+**Status**: Done
+
+**File**: `crates/codescope-embed/src/tokenizer.rs`
 
 **Tasks**:
 - [x] HuggingFace tokenizers integration
 - [x] Max sequence length handling
 - [x] Batch padding
-- [ ] Test with actual tokenizer.json
+- [ ] Test with actual tokenizer.json (manual: `crates/codescope-embed/examples/embed_smoke.rs`)
+
+**Notes**:
+- Workspace uses `tokenizers` with `default-features = false, features = ["onig"]` to avoid MSVC `/MT` vs `/MD` link conflicts with ONNX Runtime.
 
 ---
 
 ### 5.4 Implement Embedding Pipeline ⚪
 
-**Status**: Pending
+**Status**: Done
+
+**Files**:
+- `crates/codescope-embed/src/pipeline.rs`
+- `crates/codescope-core/src/embedding.rs`
 
 **Tasks**:
-- [ ] Batched inference (32 chunks default)
-- [ ] Memory-efficient streaming
-- [ ] Progress reporting via callback
-- [ ] Integration with indexing pipeline
+- [x] Batched inference (32 chunks default)
+- [x] Memory-efficient streaming (consumer callback API)
+- [x] Progress reporting via callback
+- [x] Integration surface for indexing pipeline (core can build an embedding pipeline)
 
 ---
 
@@ -114,6 +123,6 @@ V1 = CPU only, but architecture supports GPU without API changes.
 ## Deliverables
 
 - [x] `Embedder` trait defined
-- [x] `OnnxEmbedder` skeleton
+- [x] `OnnxEmbedder` implemented (CPU)
 - [ ] Embeddings match Python reference
 - [ ] Model download on init
