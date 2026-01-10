@@ -1,6 +1,6 @@
 # Epic 4: Storage Layer
 
-**Status**: ⚪ Pending (skeleton done)
+**Status**: 🟢 Done
 
 ## Description
 
@@ -64,16 +64,15 @@ CREATE TABLE kv (key TEXT PRIMARY KEY, value BLOB);
 
 ### 4.3 Implement HNSW Persistence ⚪
 
-**Status**: Pending (placeholder in place)
+**Status**: Done
 
-**Current**: Simple Vec-based brute force (for development)
-**Target**: Use `usearch` crate for production
+**Current**: `usearch`-backed persistent index
 
 **Tasks**:
-- [ ] Integrate usearch crate
-- [ ] Save/load from `.codescope/hnsw.index`
-- [ ] Version header for compatibility
-- [ ] Memory-mapped access for large indices
+- [x] Integrate usearch crate
+- [x] Save/load from `.codescope/hnsw.index`
+- [x] Version header for compatibility
+- [x] Memory-mapped access for large indices
 
 ---
 
@@ -96,4 +95,4 @@ CREATE TABLE kv (key TEXT PRIMARY KEY, value BLOB);
 
 - [x] CRUD operations work
 - [x] Persistence survives restart
-- [ ] usearch integration
+- [x] usearch integration
