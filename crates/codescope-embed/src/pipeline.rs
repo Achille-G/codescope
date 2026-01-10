@@ -34,6 +34,18 @@ impl EmbeddingPipeline {
         }
     }
 
+    pub fn model_id(&self) -> &str {
+        self.embedder.model_id()
+    }
+
+    pub fn dimensions(&self) -> usize {
+        self.embedder.dimensions()
+    }
+
+    pub fn max_seq_len(&self) -> usize {
+        self.embedder.max_seq_len()
+    }
+
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size.max(1);
         self

@@ -243,12 +243,14 @@ dependencies = [
  "anyhow",
  "clap",
  "codescope-core",
+ "codescope-search",
  "indicatif",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "xxhash-rust",
 ]
 
 [[package]]

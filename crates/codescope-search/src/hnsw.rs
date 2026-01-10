@@ -137,6 +137,10 @@ impl HNSWIndex {
         self.len() == 0
     }
 
+    pub fn dimensions(&self) -> usize {
+        self.dimensions
+    }
+
     /// Get tombstone count.
     pub fn tombstone_count(&self) -> usize {
         self.tombstones.len()
