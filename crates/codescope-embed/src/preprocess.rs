@@ -11,11 +11,14 @@ pub fn preprocess_code(text: &str, max_chars: usize) -> String {
 
     // Split identifiers and normalize
     let mut prev_was_lower = false;
+    let mut prev_was_upper = false;
     let mut prev_was_underscore = false;
 
     for ch in text.chars().take(max_chars) {
-        // Handle camelCase: insert space before uppercase if previous was lowercase
-        if ch.is_uppercase() && prev_was_lower {
+        // Handle CamelCase and ALLCAPS: insert a space before an uppercase letter when it follows
+        // another letter (lowercase or uppercase) and we aren't already at a word boundary.
+        if ch.is_uppercase() && !result.is_empty() && !result.ends_with(' ') && (prev_was_lower || prev_was_upper)
+        {
             result.push(' ');
         }
 
@@ -40,6 +43,7 @@ pub fn preprocess_code(text: &str, max_chars: usize) -> String {
 
         result.push(ch);
         prev_was_lower = ch.is_lowercase();
+        prev_was_upper = ch.is_uppercase();
         prev_was_underscore = false;
     }
 

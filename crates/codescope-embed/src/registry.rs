@@ -133,7 +133,10 @@ impl ModelRegistry {
 
 impl Default for ModelRegistry {
     fn default() -> Self {
-        Self::new(PathBuf::from("~/.codescope/models"))
+        let models_dir = dirs::home_dir()
+            .map(|home| home.join(".codescope").join("models"))
+            .unwrap_or_else(|| PathBuf::from(".codescope").join("models"));
+        Self::new(models_dir)
     }
 }
 

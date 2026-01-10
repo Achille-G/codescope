@@ -10,6 +10,7 @@
 
 pub mod change_detector;
 pub mod config;
+pub mod embedding;
 pub mod error;
 pub mod file_reader;
 pub mod profile;
@@ -18,6 +19,7 @@ pub mod walker;
 
 pub use change_detector::{ChangeDetector, Changes, FileState};
 pub use config::Config;
+pub use embedding::{build_embedding_pipeline, resolve_embedding, ResolvedEmbedding};
 pub use error::{Error, Result};
 pub use file_reader::{
     FileContent, FileParseConfig, FileParseError, FileParseOutcome, FileParser, FileReadConfig,
