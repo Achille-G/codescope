@@ -40,6 +40,9 @@ impl Language {
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => Some(Language::Cpp),
             "go" => Some(Language::Go),
             "html" | "htm" => Some(Language::Html),
+            // Vue single-file components are close enough to HTML for our purposes today:
+            // they typically contain <template>/<script>/<style> blocks, which tree-sitter-html can parse.
+            "vue" => Some(Language::Html),
             "css" => Some(Language::Css),
             "scss" | "sass" => Some(Language::Scss),
             "json" => Some(Language::Json),
@@ -123,6 +126,7 @@ mod tests {
         assert_eq!(Language::from_extension("tsx"), Some(Language::Tsx));
         assert_eq!(Language::from_extension("py"), Some(Language::Python));
         assert_eq!(Language::from_extension("rs"), Some(Language::Rust));
+        assert_eq!(Language::from_extension("vue"), Some(Language::Html));
         assert_eq!(Language::from_extension("unknown"), None);
     }
 

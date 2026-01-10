@@ -113,6 +113,7 @@ Each project stores its index in `.codescope/`:
 |----------|------------|
 | TypeScript | `.ts`, `.tsx` |
 | JavaScript | `.js`, `.jsx`, `.mjs` |
+| Vue SFC | `.vue` |
 | Python | `.py` |
 | Rust | `.rs` |
 | Go | `.go` |

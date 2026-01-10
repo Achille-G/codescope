@@ -53,6 +53,10 @@ codescope clean --yes
 codescope index --all
 ```
 
+### Vue (`.vue`) files
+
+`.vue` single-file components are indexed by treating them as HTML for parsing/chunking, so they are not ignored by default. If embeddings are enabled during indexing, they are also embedded and available for `--type semantic` / `--type hybrid` search.
+
 ## `codescope search`
 
 Searches the indexed codebase.
