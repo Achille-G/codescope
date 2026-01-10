@@ -35,14 +35,15 @@ Benchmarking, testing, and performance optimization to meet SLOs.
 
 ---
 
-### 8.2 Integration Tests ⚪
+### 8.2 Integration Tests ✅
 
-**Status**: Pending
+**Status**: Complete
 
 **Tasks**:
-- [ ] Golden tests for chunking (expected output)
-- [ ] Search relevance tests (known queries → expected results)
-- [ ] Cross-platform CI
+- [x] Golden tests for chunking (expected output)
+- [x] Search relevance tests (known queries → expected results)
+- [x] CLI integration tests
+- [ ] Cross-platform CI (deferred - requires CI setup)
 
 **Test Structure**:
 ```
