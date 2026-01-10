@@ -2,15 +2,23 @@
 /target/
 **/*.rs.bk
 
+# Cargo
+.cargo/config.toml
+
+# Debug symbols
+*.pdb
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Codescope local data (per-project)
 .codescope/
@@ -20,3 +28,14 @@ Thumbs.db
 
 # Test artifacts
 *.tmp
+*.log
+
+# Environment
+.env
+.env.local
+
+# Coverage
+*.profraw
+*.profdata
+coverage/
+tarpaulin-report.html
