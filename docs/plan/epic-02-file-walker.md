@@ -71,6 +71,6 @@ Implement file discovery with gitignore support, change detection, and language 
 
 ## Deliverables
 
-- [ ] `codescope status` shows file counts
+- [x] `codescope status` shows file counts
 - [ ] Changed files detected correctly
 - [ ] Memory stays bounded

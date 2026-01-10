@@ -23,7 +23,11 @@ impl OnnxEmbedder {
     /// Load an embedder from model and tokenizer paths
     ///
     /// NOTE: Currently a placeholder. Returns a mock embedder.
-    pub fn load(model_path: &Path, _tokenizer_path: &Path, config: &EmbedderConfig) -> Result<Self> {
+    pub fn load(
+        model_path: &Path,
+        _tokenizer_path: &Path,
+        config: &EmbedderConfig,
+    ) -> Result<Self> {
         tracing::warn!(
             "OnnxEmbedder::load is a placeholder. Model at {} not actually loaded.",
             model_path.display()

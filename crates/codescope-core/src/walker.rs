@@ -182,16 +182,16 @@ impl Walker {
         // Add custom exclude patterns
         for pattern in &self.config.exclude_patterns {
             let negated = format!("!{}", pattern.trim_start_matches('!'));
-            overrides
-                .add(&negated)
-                .map_err(|e| Error::Config(format!("Invalid exclude pattern '{}': {}", pattern, e)))?;
+            overrides.add(&negated).map_err(|e| {
+                Error::Config(format!("Invalid exclude pattern '{}': {}", pattern, e))
+            })?;
         }
 
         // Add custom include patterns
         for pattern in &self.config.include_patterns {
-            overrides
-                .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid include pattern '{}': {}", pattern, e)))?;
+            overrides.add(pattern).map_err(|e| {
+                Error::Config(format!("Invalid include pattern '{}': {}", pattern, e))
+            })?;
         }
 
         let overrides = overrides
@@ -247,7 +247,10 @@ impl Walker {
     /// Walk and return only files with supported languages
     pub fn walk_supported(&self) -> Result<Vec<FileEntry>> {
         let files = self.walk()?;
-        let supported: Vec<_> = files.into_iter().filter(|f| f.has_supported_language()).collect();
+        let supported: Vec<_> = files
+            .into_iter()
+            .filter(|f| f.has_supported_language())
+            .collect();
         debug!("Found {} files with supported languages", supported.len());
         Ok(supported)
     }
@@ -287,7 +290,9 @@ mod tests {
         // Should find main.rs, lib.ts, readme.txt, src/mod.rs
         // Should NOT find node_modules/pkg.js
         assert!(files.len() >= 3);
-        assert!(!files.iter().any(|f| f.path.to_string_lossy().contains("node_modules")));
+        assert!(!files
+            .iter()
+            .any(|f| f.path.to_string_lossy().contains("node_modules")));
     }
 
     #[test]
@@ -298,10 +303,14 @@ mod tests {
 
         // Should find .rs and .ts files
         assert!(files.iter().any(|f| f.language == Some(Language::Rust)));
-        assert!(files.iter().any(|f| f.language == Some(Language::TypeScript)));
+        assert!(files
+            .iter()
+            .any(|f| f.language == Some(Language::TypeScript)));
 
         // readme.txt should not be in supported files
-        assert!(!files.iter().any(|f| f.path.to_string_lossy().contains("readme.txt")));
+        assert!(!files
+            .iter()
+            .any(|f| f.path.to_string_lossy().contains("readme.txt")));
     }
 
     #[test]
@@ -312,7 +321,11 @@ mod tests {
         fs::write(dir.path().join("small.rs"), "fn small() {}").unwrap();
 
         // Create a "large" file (we'll set max to 10 bytes)
-        fs::write(dir.path().join("large.rs"), "fn large() { /* lots of code */ }").unwrap();
+        fs::write(
+            dir.path().join("large.rs"),
+            "fn large() { /* lots of code */ }",
+        )
+        .unwrap();
 
         let config = WalkerConfig {
             max_file_size: 20,

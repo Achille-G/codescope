@@ -8,9 +8,8 @@ use std::io::{self, Write};
 pub fn run(yes: bool) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
-    let project = Project::find(&current_dir).context(
-        "Not in a codescope project. Run 'codescope init' first.",
-    )?;
+    let project = Project::find(&current_dir)
+        .context("Not in a codescope project. Run 'codescope init' first.")?;
 
     if !yes {
         print!("This will delete all index data. Continue? [y/N] ");

@@ -76,13 +76,13 @@ impl Parser {
         if let Some((chunk_kind, name)) = self.node_to_chunk_info(node, content, language) {
             let start_line = node.start_position().row as u32 + 1;
             let end_line = node.end_position().row as u32 + 1;
-            let chunk_content = node
-                .utf8_text(content.as_bytes())
-                .unwrap_or("")
-                .to_string();
+            let chunk_content = node.utf8_text(content.as_bytes()).unwrap_or("").to_string();
 
             // For classes, visit children with this class as parent
-            let is_container = matches!(chunk_kind, ChunkKind::Class | ChunkKind::Struct | ChunkKind::Interface);
+            let is_container = matches!(
+                chunk_kind,
+                ChunkKind::Class | ChunkKind::Struct | ChunkKind::Interface
+            );
             let class_name = if is_container { name.clone() } else { None };
 
             let mut chunk = Chunk::new(name, chunk_kind, start_line, end_line, chunk_content);
@@ -151,7 +151,8 @@ impl Parser {
                 Some((ChunkKind::Method, name))
             }
             "class_declaration" | "class" => {
-                let name = self.find_child_text(node, "identifier", content)
+                let name = self
+                    .find_child_text(node, "identifier", content)
                     .or_else(|| self.find_child_text(node, "type_identifier", content));
                 Some((ChunkKind::Class, name))
             }
@@ -169,10 +170,7 @@ impl Parser {
             "function_definition" => {
                 let name = self.find_child_text(node, "identifier", content);
                 // Check if inside a class (has self parameter typically)
-                let chunk_kind = if node
-                    .parent()
-                    .map(|p| p.kind() == "block")
-                    .unwrap_or(false)
+                let chunk_kind = if node.parent().map(|p| p.kind() == "block").unwrap_or(false)
                     && node
                         .parent()
                         .and_then(|p| p.parent())

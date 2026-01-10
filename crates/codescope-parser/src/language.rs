@@ -100,7 +100,10 @@ impl Language {
 
     /// Check if this language supports AST-based chunking
     pub fn supports_ast_chunking(&self) -> bool {
-        !matches!(self, Language::Json | Language::Yaml | Language::Css | Language::Scss)
+        !matches!(
+            self,
+            Language::Json | Language::Yaml | Language::Css | Language::Scss
+        )
     }
 }
 

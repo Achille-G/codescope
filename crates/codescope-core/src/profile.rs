@@ -82,7 +82,10 @@ impl std::str::FromStr for Profile {
             "light" => Ok(Profile::Light),
             "default" => Ok(Profile::Default),
             "heavy" => Ok(Profile::Heavy),
-            _ => Err(format!("Unknown profile: {}. Use light, default, or heavy.", s)),
+            _ => Err(format!(
+                "Unknown profile: {}. Use light, default, or heavy.",
+                s
+            )),
         }
     }
 }

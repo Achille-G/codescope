@@ -132,18 +132,12 @@ impl HNSWIndex {
         let m = data["m"].as_u64().unwrap_or(32) as usize;
         let ef_construction = data["ef_construction"].as_u64().unwrap_or(200) as usize;
 
-        let vectors: Vec<(i64, Vec<f32>)> = serde_json::from_value(
-            data["vectors"].clone(),
-        )
-        .unwrap_or_default();
+        let vectors: Vec<(i64, Vec<f32>)> =
+            serde_json::from_value(data["vectors"].clone()).unwrap_or_default();
 
         let tombstones: HashSet<i64> = data["tombstones"]
             .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_i64())
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_i64()).collect())
             .unwrap_or_default();
 
         Ok(Self {

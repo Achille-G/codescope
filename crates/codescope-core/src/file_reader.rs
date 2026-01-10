@@ -199,6 +199,11 @@ impl FileParser {
         Self { config, parser }
     }
 
+    /// Build a parser with a default tree-sitter pool.
+    pub fn with_default_parser(config: FileParseConfig) -> Self {
+        Self::new(Arc::new(Parser::new()), config)
+    }
+
     /// Parse a stream of file reads and return parsed outcomes.
     pub fn parse_stream(&self, input: Receiver<FileReadOutcome>) -> Receiver<FileParseOutcome> {
         let buffer_size = self.config.buffer_size.max(1);
@@ -422,10 +427,13 @@ mod tests {
             buffer_size: 2,
             ..Default::default()
         });
-        let parser = FileParser::new(Arc::new(Parser::new()), FileParseConfig {
-            num_threads: 1,
-            buffer_size: 2,
-        });
+        let parser = FileParser::new(
+            Arc::new(Parser::new()),
+            FileParseConfig {
+                num_threads: 1,
+                buffer_size: 2,
+            },
+        );
 
         let parse_outcomes: Vec<_> = parser
             .parse_stream(reader.read_files(vec![entry]))
@@ -454,10 +462,13 @@ mod tests {
             buffer_size: 2,
             ..Default::default()
         });
-        let parser = FileParser::new(Arc::new(Parser::new()), FileParseConfig {
-            num_threads: 1,
-            buffer_size: 2,
-        });
+        let parser = FileParser::new(
+            Arc::new(Parser::new()),
+            FileParseConfig {
+                num_threads: 1,
+                buffer_size: 2,
+            },
+        );
 
         let parse_outcomes: Vec<_> = parser
             .parse_stream(reader.read_files(vec![entry]))
