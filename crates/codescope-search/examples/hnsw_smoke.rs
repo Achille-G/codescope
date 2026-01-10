@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("hnsw index: {}", path.display());
     println!("hnsw meta:  {}.meta", path.display());
-    println!("results: {:?}", results);
+    println!("results: {results:?}");
 
     Ok(())
 }

@@ -93,7 +93,7 @@ impl Chunk {
     /// Get a display name for the chunk
     pub fn display_name(&self) -> String {
         match (&self.parent, &self.symbol) {
-            (Some(parent), Some(symbol)) => format!("{}.{}", parent, symbol),
+            (Some(parent), Some(symbol)) => format!("{parent}.{symbol}"),
             (None, Some(symbol)) => symbol.clone(),
             _ => format!("{}:{}-{}", self.kind, self.start_line, self.end_line),
         }
@@ -113,7 +113,7 @@ fn normalize_content(content: &str) -> String {
     let normalized = content.replace("\r\n", "\n").replace('\r', "\n");
     let lines: Vec<String> = normalized
         .lines()
-        .map(|line| line.trim_end_matches(|c| c == ' ' || c == '\t').to_string())
+        .map(|line| line.trim_end_matches([' ', '\t']).to_string())
         .collect();
 
     if lines.is_empty() {

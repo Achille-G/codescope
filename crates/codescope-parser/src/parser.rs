@@ -36,9 +36,7 @@ impl Parser {
         let ts_lang = language.tree_sitter_language()?;
 
         let mut parsers = self.parsers.lock();
-        let parser = parsers
-            .entry(language)
-            .or_insert_with(tree_sitter::Parser::new);
+        let parser = parsers.entry(language).or_default();
         parser
             .set_language(&ts_lang)
             .map_err(|err| Error::TreeSitter(err.to_string()))?;
@@ -360,11 +358,7 @@ impl Parser {
         false
     }
 
-    fn js_enclosing_name(
-        &self,
-        node: tree_sitter::Node,
-        content: &str,
-    ) -> Option<String> {
+    fn js_enclosing_name(&self, node: tree_sitter::Node, content: &str) -> Option<String> {
         let mut current = node;
         while let Some(parent) = current.parent() {
             match parent.kind() {
@@ -405,11 +399,7 @@ impl Parser {
         None
     }
 
-    fn js_assignment_target_name(
-        &self,
-        node: tree_sitter::Node,
-        content: &str,
-    ) -> Option<String> {
+    fn js_assignment_target_name(&self, node: tree_sitter::Node, content: &str) -> Option<String> {
         match node.kind() {
             "identifier" => node.utf8_text(content.as_bytes()).ok().map(String::from),
             "member_expression" => node
@@ -443,11 +433,7 @@ impl Parser {
         self.find_descendant_text(receiver, &["type_identifier", "qualified_type"], content)
     }
 
-    fn chunk_text_with_comments(
-        &self,
-        node: tree_sitter::Node,
-        content: &str,
-    ) -> (u32, String) {
+    fn chunk_text_with_comments(&self, node: tree_sitter::Node, content: &str) -> (u32, String) {
         let start_byte = self.leading_comment_start(node, content);
         let end_byte = node.end_byte();
         let start_line = if start_byte == node.start_byte() {
@@ -555,19 +541,16 @@ mod tests {
         let chunks = parser.parse(content, language).unwrap();
         assert!(
             chunks.iter().any(|chunk| chunk.kind == kind),
-            "expected {:?} chunk for {:?}",
-            kind,
-            language
+            "expected {kind:?} chunk for {language:?}",
         );
     }
 
     fn assert_fallback(parser: &Parser, language: Language, content: &str) {
         let chunks = parser.parse(content, language).unwrap();
-        assert!(!chunks.is_empty(), "expected chunks for {:?}", language);
+        assert!(!chunks.is_empty(), "expected chunks for {language:?}");
         assert!(
             chunks.iter().all(|chunk| chunk.kind == ChunkKind::Block),
-            "expected fallback chunks for {:?}",
-            language
+            "expected fallback chunks for {language:?}",
         );
     }
 
@@ -633,7 +616,12 @@ class Greeter {
             "def hello():\n    return 1",
             ChunkKind::Function,
         );
-        assert_has_kind(&parser, Language::Rust, "fn hello() {}", ChunkKind::Function);
+        assert_has_kind(
+            &parser,
+            Language::Rust,
+            "fn hello() {}",
+            ChunkKind::Function,
+        );
         assert_has_kind(
             &parser,
             Language::Java,
@@ -692,7 +680,10 @@ class Greeter:
         let content = "const greet = () => { return 1; };";
 
         let chunks = parser.parse(content, Language::JavaScript).unwrap();
-        let function = chunks.iter().find(|c| c.kind == ChunkKind::Function).unwrap();
+        let function = chunks
+            .iter()
+            .find(|c| c.kind == ChunkKind::Function)
+            .unwrap();
         assert_eq!(function.symbol.as_deref(), Some("greet"));
     }
 
@@ -722,7 +713,10 @@ class Greeter:
         let content = "// doc\nfn hello() {}\n";
 
         let chunks = parser.parse(content, Language::Rust).unwrap();
-        let function = chunks.iter().find(|c| c.kind == ChunkKind::Function).unwrap();
+        let function = chunks
+            .iter()
+            .find(|c| c.kind == ChunkKind::Function)
+            .unwrap();
         assert!(function.content.starts_with("// doc"));
         assert_eq!(function.start_line, 1);
     }
@@ -740,7 +734,7 @@ class Greeter:
     #[test]
     fn test_fallback_chunking_overlap() {
         let parser = Parser::new();
-        let lines: Vec<String> = (1..=600).map(|i| format!("line{}", i)).collect();
+        let lines: Vec<String> = (1..=600).map(|i| format!("line{i}")).collect();
         let content = lines.join("\n");
 
         let chunks = parser.fallback_chunk(&content).unwrap();

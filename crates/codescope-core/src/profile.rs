@@ -65,8 +65,8 @@ impl Profile {
     pub fn read_threads(&self) -> usize {
         let cpus = num_cpus();
         match self {
-            Profile::Light => (cpus / 4).max(1).min(2),
-            Profile::Default => (cpus / 2).max(2).min(4),
+            Profile::Light => (cpus / 4).clamp(1, 2),
+            Profile::Default => (cpus / 2).clamp(2, 4),
             Profile::Heavy => cpus.min(8),
         }
     }
@@ -252,8 +252,7 @@ impl std::str::FromStr for Profile {
             "default" => Ok(Profile::Default),
             "heavy" => Ok(Profile::Heavy),
             _ => Err(format!(
-                "Unknown profile: {}. Use light, default, or heavy.",
-                s
+                "Unknown profile: {s}. Use light, default, or heavy."
             )),
         }
     }

@@ -51,7 +51,7 @@ impl StoragePool {
         let id = NEXT_MEMORY_DB_ID.fetch_add(1, Ordering::Relaxed);
         let inner = Arc::new(StoragePoolInner {
             path: StoragePath::Memory {
-                uri: format!("file:codescope_mem_{}?mode=memory&cache=shared", id),
+                uri: format!("file:codescope_mem_{id}?mode=memory&cache=shared"),
             },
             max_size: max_size.max(1),
             open: AtomicUsize::new(0),
@@ -249,7 +249,7 @@ impl Storage {
         )?;
 
         self.get_file_id(path)?
-            .ok_or_else(|| crate::Error::Storage(format!("Missing file_id after upsert: {}", path)))
+            .ok_or_else(|| crate::Error::Storage(format!("Missing file_id after upsert: {path}")))
     }
 
     /// Get file ID by path
@@ -318,6 +318,7 @@ impl Storage {
     }
 
     /// Insert a chunk
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_chunk(
         &self,
         file_id: i64,
@@ -422,7 +423,9 @@ impl Storage {
 
     /// Get tombstone chunk IDs
     pub fn get_tombstones(&self) -> Result<Vec<i64>> {
-        let mut stmt = self.conn.prepare_cached("SELECT chunk_id FROM tombstones")?;
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT chunk_id FROM tombstones")?;
         let ids: Vec<i64> = stmt
             .query_map([], |row| row.get(0))?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -542,9 +545,7 @@ mod tests {
 
         {
             let storage = pool.get().unwrap();
-            storage
-                .upsert_file("a.rs", Some("rust"), b"h1", 1)
-                .unwrap();
+            storage.upsert_file("a.rs", Some("rust"), b"h1", 1).unwrap();
         }
 
         let storage = pool.get().unwrap();

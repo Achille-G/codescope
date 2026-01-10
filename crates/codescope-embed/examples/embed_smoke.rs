@@ -1,5 +1,7 @@
 use anyhow::{Context, Result};
-use codescope_embed::{EmbeddingPipeline, Embedder, EmbedderConfig, ExecutionProvider, OnnxEmbedder};
+use codescope_embed::{
+    Embedder, EmbedderConfig, EmbeddingPipeline, ExecutionProvider, OnnxEmbedder,
+};
 use std::path::PathBuf;
 
 fn main() -> Result<()> {
@@ -35,12 +37,19 @@ fn main() -> Result<()> {
     ];
 
     let mut ticks = 0usize;
-    let embeddings = pipeline.embed_texts_with_progress(&texts, Some(|p: codescope_embed::EmbeddingProgress| {
-        ticks += 1;
-        eprintln!("embedded: {}/{}", p.processed, p.total.unwrap_or(0));
-    }))?;
+    let embeddings = pipeline.embed_texts_with_progress(
+        &texts,
+        Some(|p: codescope_embed::EmbeddingProgress| {
+            ticks += 1;
+            eprintln!("embedded: {}/{}", p.processed, p.total.unwrap_or(0));
+        }),
+    )?;
 
-    println!("embedded {} texts ({} progress updates)", embeddings.len(), ticks);
+    println!(
+        "embedded {} texts ({} progress updates)",
+        embeddings.len(),
+        ticks
+    );
     for (i, emb) in embeddings.iter().enumerate() {
         let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
         println!("text[{i}] norm: {norm:.4}");

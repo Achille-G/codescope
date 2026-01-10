@@ -36,12 +36,7 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
         codescope_search::result::SearchType::Hybrid => {
             let pipeline = codescope_core::build_embedding_pipeline(&project)?;
             let embeddings = pipeline.embed_texts(&[query])?;
-            engine.search_hybrid(
-                query,
-                &embeddings[0],
-                top,
-                FusionStrategy::Rrf { k: 60.0 },
-            )?
+            engine.search_hybrid(query, &embeddings[0], top, FusionStrategy::Rrf { k: 60.0 })?
         }
     };
 

@@ -15,7 +15,7 @@ pub fn run(profile: &str, force: bool) -> Result<()> {
         Project::init(&current_dir, profile, force).context("Failed to initialize project")?;
 
     println!("Initialized codescope in {}", project.root().display());
-    println!("Profile: {}", profile);
+    println!("Profile: {profile}");
     println!();
     println!("Next steps:");
     println!("  codescope index    # Index the codebase");

@@ -15,8 +15,8 @@ pub mod provider;
 pub mod registry;
 pub mod tokenizer;
 
-pub use embedder::Embedder;
 pub use embedder::BoxedEmbedder;
+pub use embedder::Embedder;
 pub use error::{Error, Result};
 pub use onnx::OnnxEmbedder;
 pub use pipeline::{EmbeddingPipeline, EmbeddingProgress};

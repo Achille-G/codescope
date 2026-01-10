@@ -2,11 +2,14 @@
 //!
 //! These tests verify the CLI commands work correctly end-to-end.
 
+use assert_cmd::assert::OutputAssertExt;
+#[allow(deprecated)]
 use assert_cmd::cargo::cargo_bin;
 use predicates::prelude::*;
 use std::process::Command;
 use tempfile::TempDir;
 
+#[allow(deprecated)]
 fn codescope_cmd() -> Command {
     Command::new(cargo_bin("codescope"))
 }
@@ -42,7 +45,11 @@ fn test_cli_init() {
 
     // Check that .codescope directory was created
     assert!(temp_dir.path().join(".codescope").exists());
-    assert!(temp_dir.path().join(".codescope").join("config.toml").exists());
+    assert!(temp_dir
+        .path()
+        .join(".codescope")
+        .join("config.toml")
+        .exists());
 }
 
 #[test]
@@ -83,7 +90,10 @@ fn test_cli_status_initialized() {
 
     // Initialize first
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     // Then check status
     let mut cmd = codescope_cmd();
@@ -124,7 +134,10 @@ fn test_cli_clean_initialized() {
 
     // Initialize first
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     // Clean should succeed
     let mut cmd = codescope_cmd();
@@ -140,7 +153,10 @@ fn test_cli_index_empty_project() {
 
     // Initialize first
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     // Index should succeed even with no files
     let mut cmd = codescope_cmd();
@@ -163,7 +179,10 @@ fn test_cli_index_with_file() {
 
     // Initialize
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     // Index
     let mut cmd = codescope_cmd();
@@ -194,11 +213,17 @@ export function uniqueSearchableFunction(): string {
 
     // Initialize
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     // Index
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("index").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
 
     // Search for the unique function
     let mut cmd = codescope_cmd();
@@ -224,10 +249,16 @@ fn test_cli_search_pretty_output() {
 
     // Initialize and index
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("index").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
 
     // Search with pretty output
     let mut cmd = codescope_cmd();
@@ -249,18 +280,24 @@ fn test_cli_search_top_k() {
     // Create multiple files
     for i in 0..5 {
         std::fs::write(
-            temp_dir.path().join(format!("test{}.ts", i)),
-            format!("export function func{}(): void {{}}", i),
+            temp_dir.path().join(format!("test{i}.ts")),
+            format!("export function func{i}(): void {{}}"),
         )
         .expect("Failed to write test file");
     }
 
     // Initialize and index
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("index").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
 
     // Search with --top 2
     let mut cmd = codescope_cmd();
@@ -292,10 +329,16 @@ fn test_cli_index_incremental() {
 
     // Initialize and index
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("index").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
 
     // Add another file
     std::fs::write(
@@ -326,10 +369,16 @@ fn test_cli_index_all_flag() {
 
     // Initialize and index
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("init").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
 
     let mut cmd = codescope_cmd();
-    cmd.current_dir(temp_dir.path()).arg("index").assert().success();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
 
     // Full re-index with --all
     let mut cmd = codescope_cmd();

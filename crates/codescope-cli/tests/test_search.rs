@@ -8,13 +8,8 @@ use xxhash_rust::xxh3::xxh3_64;
 
 /// Helper to get fixture content
 fn fixture_content(fixture: &str) -> String {
-    let path = format!(
-        "{}/tests/fixtures/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        fixture
-    );
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("Failed to read fixture: {}", path))
+    let path = format!("{}/tests/fixtures/{}", env!("CARGO_MANIFEST_DIR"), fixture);
+    std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read fixture: {path}"))
 }
 
 /// Set up an in-memory search engine with fixtures indexed
@@ -99,13 +94,15 @@ fn test_search_finds_login_function() {
 
     let results = engine.search_lexical("login", 10).unwrap();
 
-    assert!(!results.results.is_empty(), "Should find results for 'login'");
+    assert!(
+        !results.results.is_empty(),
+        "Should find results for 'login'"
+    );
 
     // First result should be the login method
     let first = &results.results[0];
     assert!(
-        first.symbol.as_deref() == Some("login")
-            || first.snippet.contains("login"),
+        first.symbol.as_deref() == Some("login") || first.snippet.contains("login"),
         "First result should be login-related"
     );
 }
@@ -170,7 +167,10 @@ fn test_search_finds_calculate_functions() {
 
     // Should have results from at least two files
     assert!(
-        files.len() >= 2 || files.iter().any(|f| f.contains("python") || f.contains("rust")),
+        files.len() >= 2
+            || files
+                .iter()
+                .any(|f| f.contains("python") || f.contains("rust")),
         "Should find calculate functions in multiple files"
     );
 }

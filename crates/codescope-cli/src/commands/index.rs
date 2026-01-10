@@ -64,8 +64,8 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         ProgressStyle::with_template(
             "[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} ETA {eta_precise} {msg}",
         )
-            .unwrap()
-            .progress_chars("##-"),
+        .unwrap()
+        .progress_chars("##-"),
     );
     file_pb.set_message("Indexing files...");
 
@@ -90,7 +90,10 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         }
     };
 
-    let dims = embed_pipeline.as_ref().map(|p| p.dimensions()).unwrap_or(384);
+    let dims = embed_pipeline
+        .as_ref()
+        .map(|p| p.dimensions())
+        .unwrap_or(384);
     let mut hnsw = open_or_create_hnsw(&project.hnsw_index_path(), dims)?;
     if hnsw.dimensions() != dims {
         return Err(anyhow::anyhow!(
@@ -155,8 +158,12 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                 let file_hash = xxh3_64(&file_bytes).to_le_bytes();
                 let size_bytes = i64::try_from(parsed.size).unwrap_or(i64::MAX);
 
-                let file_id =
-                    storage.upsert_file(&rel, Some(parsed.language.as_str()), &file_hash, size_bytes)?;
+                let file_id = storage.upsert_file(
+                    &rel,
+                    Some(parsed.language.as_str()),
+                    &file_hash,
+                    size_bytes,
+                )?;
 
                 // Remove old chunks for this file (if any), and reflect deletions in BM25/HNSW.
                 let old_chunk_ids = storage.delete_chunks_for_file(file_id)?;
@@ -211,11 +218,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                 detector.update_file_state(&parsed.path)?;
                 file_pb.inc(1);
                 file_pb.set_message(format!(
-                    "{} files, {} chunks, {} vectors (last: {})",
-                    indexed_files,
-                    indexed_chunks,
-                    indexed_vectors,
-                    rel
+                    "{indexed_files} files, {indexed_chunks} chunks, {indexed_vectors} vectors (last: {rel})"
                 ));
             }
             FileParseOutcome::Skipped(_) => {
@@ -244,14 +247,15 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         failed_files,
         changes.deleted.len()
     );
-    println!(
-        "Chunks: indexed={}, deleted={}",
-        indexed_chunks, deleted_chunks
-    );
+    println!("Chunks: indexed={indexed_chunks}, deleted={deleted_chunks}");
     println!(
         "Vectors: indexed={} (embeddings {})",
         indexed_vectors,
-        if embed_pipeline.is_some() { "enabled" } else { "disabled" }
+        if embed_pipeline.is_some() {
+            "enabled"
+        } else {
+            "disabled"
+        }
     );
 
     Ok(())

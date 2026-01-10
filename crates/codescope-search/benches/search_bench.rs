@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo bench -p codescope-search
 
-use codescope_search::{BM25Index, HNSWIndex, Storage, StoragePool};
+use codescope_search::{BM25Index, HNSWIndex, StoragePool};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rand::Rng;
 use xxhash_rust::xxh3::xxh3_64;
@@ -43,19 +43,20 @@ export function process_{id}(input: string): ProcessResult {{
     }}
 
     return result;
-}}"#,
-        id = id
+}}"#
     )
 }
 
 /// Setup BM25 index with N documents
 fn setup_bm25(num_docs: usize) -> BM25Index {
     let mut index = BM25Index::open_memory().expect("Failed to create BM25 index");
-    index.begin_write(100_000_000).expect("Failed to begin write");
+    index
+        .begin_write(100_000_000)
+        .expect("Failed to begin write");
 
     for i in 0..num_docs {
         let content = generate_chunk_content(i);
-        let symbol = format!("process_{}", i);
+        let symbol = format!("process_{i}");
         let file = format!("src/module_{}.ts", i % 100);
         index
             .add_document(i as i64, &content, Some(&symbol), "function", &file)
@@ -72,9 +73,7 @@ fn setup_hnsw(num_vectors: usize, dim: usize) -> HNSWIndex {
 
     for i in 0..num_vectors {
         let vector = random_vector(dim);
-        index
-            .add(i as i64, vector)
-            .expect("Failed to add vector");
+        index.add(i as i64, vector).expect("Failed to add vector");
     }
 
     index
@@ -96,7 +95,7 @@ fn setup_storage(num_chunks: usize) -> StoragePool {
 
             let content = generate_chunk_content(i);
             let content_hash = xxh3_64(content.as_bytes()).to_le_bytes();
-            let symbol = format!("process_{}", i);
+            let symbol = format!("process_{i}");
 
             storage
                 .insert_chunk(
@@ -122,13 +121,9 @@ fn bench_bm25_search(c: &mut Criterion) {
         let index = setup_bm25(num_docs);
 
         group.throughput(Throughput::Elements(1));
-        group.bench_with_input(
-            BenchmarkId::new("docs", num_docs),
-            &index,
-            |b, index| {
-                b.iter(|| index.search(black_box("process function input"), black_box(10)));
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("docs", num_docs), &index, |b, index| {
+            b.iter(|| index.search(black_box("process function input"), black_box(10)));
+        });
     }
 
     group.finish();
@@ -274,7 +269,7 @@ fn bench_bm25_add(c: &mut Criterion) {
         let mut id = 0i64;
         b.iter(|| {
             let content = generate_chunk_content(id as usize);
-            let symbol = format!("process_{}", id);
+            let symbol = format!("process_{id}");
             index
                 .add_document(id, &content, Some(&symbol), "function", "src/test.ts")
                 .unwrap();

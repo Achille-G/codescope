@@ -55,8 +55,7 @@ impl std::fmt::Debug for EmbedTokenizer {
 impl EmbedTokenizer {
     /// Load a tokenizer from a `tokenizer.json` file and configure truncation + padding.
     pub fn from_file(path: &Path, max_seq_len: usize) -> Result<Self> {
-        let mut inner =
-            Tokenizer::from_file(path).map_err(|e| Error::Tokenizer(e.to_string()))?;
+        let mut inner = Tokenizer::from_file(path).map_err(|e| Error::Tokenizer(e.to_string()))?;
 
         inner
             .with_truncation(Some(TruncationParams {
@@ -146,15 +145,11 @@ mod tests {
     use tokenizers::pre_tokenizers::whitespace::Whitespace;
 
     fn test_tokenizer(max_seq_len: usize) -> EmbedTokenizer {
-        let vocab: HashMap<String, u32> = [
-            ("<unk>", 0),
-            ("hello", 1),
-            ("world", 2),
-            ("goodbye", 3),
-        ]
-        .into_iter()
-        .map(|(k, v)| (k.to_string(), v))
-        .collect();
+        let vocab: HashMap<String, u32> =
+            [("<unk>", 0), ("hello", 1), ("world", 2), ("goodbye", 3)]
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect();
 
         let model = WordLevel::builder()
             .vocab(vocab)
@@ -163,7 +158,7 @@ mod tests {
             .unwrap();
 
         let mut inner = Tokenizer::new(model);
-        inner.with_pre_tokenizer(Some(Whitespace::default()));
+        inner.with_pre_tokenizer(Some(Whitespace));
         inner
             .with_truncation(Some(TruncationParams {
                 max_length: max_seq_len,
@@ -199,4 +194,3 @@ mod tests {
         assert_eq!(enc.attention_mask.iter().sum::<i64>(), 4);
     }
 }
-
