@@ -259,15 +259,18 @@ dependencies = [
  "codescope-embed",
  "codescope-parser",
  "codescope-search",
+ "crossbeam-channel",
  "dirs",
  "ignore",
  "parking_lot",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror",
  "toml",
  "tracing",
+ "xxhash-rust",
 ]
 
 [[package]]

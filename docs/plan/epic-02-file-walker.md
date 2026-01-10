@@ -52,15 +52,15 @@ Implement file discovery with gitignore support, change detection, and language 
 
 ---
 
-### 2.3 Implement Concurrent File Reading ⚪
+### 2.3 Implement Concurrent File Reading ✅
 
-**Status**: Pending
+**Status**: Done
 
 **Tasks**:
-- [ ] Bounded channel for backpressure
-- [ ] UTF-8 validation with lossy fallback
-- [ ] Large file handling (skip >1MB or chunk)
-- [ ] Streaming to parser
+- [x] Bounded channel for backpressure
+- [x] UTF-8 validation with lossy fallback
+- [x] Large file handling (skip >1MB or chunk)
+- [x] Streaming to parser
 
 **Acceptance Criteria**:
 - No memory explosion on large repos
