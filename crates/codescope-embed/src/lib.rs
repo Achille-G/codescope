@@ -12,9 +12,11 @@ pub mod onnx;
 pub mod preprocess;
 pub mod provider;
 pub mod registry;
+pub mod tokenizer;
 
 pub use embedder::Embedder;
 pub use error::{Error, Result};
 pub use onnx::OnnxEmbedder;
 pub use provider::{EmbedderConfig, ExecutionProvider};
 pub use registry::ModelRegistry;
+pub use tokenizer::{BatchEncoding, EmbedTokenizer};
