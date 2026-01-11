@@ -69,12 +69,24 @@ Options:
 - `-n, --top <N>`: number of results (default: 10)
 - `--pretty`: human-readable output (default is JSONL)
 
+### Token optimization flags (for AI agents)
+
+- `--compact`: output file paths and line ranges only (no code snippets)
+- `--excerpt-lines <N>`: limit snippet output to N lines (default: full chunk)
+- `--dedupe <true|false>`: deduplicate overlapping chunks (default: true)
+- `--no-dedupe`: disable overlap deduplication (for debugging)
+
 Examples:
 
 ```bash
 codescope search "authentication middleware" --type lexical
 codescope search "error handling" --type hybrid -n 20 --pretty
 codescope search "vector database" --type semantic -n 5
+
+# Token-efficient search for AI agents
+codescope search "auth" --compact
+codescope search "middleware" --excerpt-lines 5
+codescope search "config" --no-dedupe
 ```
 
 Exit codes:
@@ -131,6 +143,18 @@ Examples:
 codescope clean
 codescope clean --yes
 ```
+
+## `codescope agent-setup`
+
+Outputs instructions for configuring AI agents (Claude, GPT, etc.) to use codescope effectively.
+
+Example:
+
+```bash
+codescope agent-setup
+```
+
+This prints recommended CLAUDE.md / system prompt snippets with token-efficient search patterns.
 
 ## Inspecting `.codescope/meta.sqlite`
 
