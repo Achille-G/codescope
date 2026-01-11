@@ -15,12 +15,21 @@ pub fn run(
     pretty: bool,
     search_type: &str,
     compact: bool,
+    excerpt_lines: Option<usize>,
     dedupe: bool,
 ) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
     let project = Project::find(&current_dir)
         .context("Not in a codescope project. Run 'codescope init' first.")?;
+
+    let excerpt_lines = excerpt_lines.or(project.config().search.excerpt_lines);
+    if let Some(0) = excerpt_lines {
+        return Err(anyhow::anyhow!("--excerpt-lines must be >= 1"));
+    }
+
+    let dedupe_enabled = project.config().search.dedupe && dedupe;
+    let dedupe_threshold = project.config().search.dedupe_overlap_threshold;
 
     let paths = SearchPaths::new(
         project.meta_db_path(),
@@ -47,9 +56,8 @@ pub fn run(
         }
     };
 
-    let dedupe_enabled = project.config().search.dedupe && dedupe;
     if dedupe_enabled {
-        results.deduplicate(project.config().search.dedupe_overlap_threshold);
+        results.deduplicate(dedupe_threshold);
     }
 
     info!(
@@ -74,7 +82,8 @@ pub fn run(
                 r.symbol.as_deref().unwrap_or("-")
             );
             if !compact {
-                println!("{}", r.truncated_snippet(8));
+                let max_lines = excerpt_lines.unwrap_or(8);
+                println!("{}", r.truncated_snippet(max_lines));
                 println!();
             }
         }
@@ -82,6 +91,8 @@ pub fn run(
         for r in &results.results {
             if compact {
                 println!("{}", r.to_compact_jsonl());
+            } else if let Some(max_lines) = excerpt_lines {
+                println!("{}", r.to_jsonl_with_limit(max_lines));
             } else {
                 println!("{}", r.to_jsonl());
             }

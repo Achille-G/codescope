@@ -93,7 +93,7 @@ auth.js:1-50     ← Only one chunk retained
 
 ### 15.3 Configurable Excerpt Lines (--excerpt-lines)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Limit displayed lines per chunk to N lines.
 

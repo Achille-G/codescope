@@ -78,6 +78,10 @@ enum Commands {
         #[arg(long)]
         compact: bool,
 
+        /// Limit snippet output to N lines
+        #[arg(long)]
+        excerpt_lines: Option<usize>,
+
         /// Deduplicate overlapping chunks (default: true)
         #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true")]
         dedupe: bool,
@@ -120,6 +124,7 @@ fn main() -> std::process::ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
+        .with_writer(std::io::stderr)
         .init();
 
     // Dispatch to command handlers
@@ -132,8 +137,9 @@ fn main() -> std::process::ExitCode {
             pretty,
             r#type,
             compact,
+            excerpt_lines,
             dedupe,
-        } => commands::search::run(&query, top, pretty, &r#type, compact, dedupe),
+        } => commands::search::run(&query, top, pretty, &r#type, compact, excerpt_lines, dedupe),
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),

@@ -87,6 +87,10 @@ pub struct SearchConfig {
     /// Overlap ratio threshold (overlap / min(chunk_len_a, chunk_len_b))
     #[serde(default = "default_dedupe_overlap_threshold")]
     pub dedupe_overlap_threshold: f64,
+
+    /// Limit displayed lines per result snippet (None = no limit)
+    #[serde(default)]
+    pub excerpt_lines: Option<usize>,
 }
 
 fn default_top_k() -> usize {
@@ -117,6 +121,7 @@ impl Default for SearchConfig {
             bm25_weight: default_bm25_weight(),
             dedupe: default_dedupe(),
             dedupe_overlap_threshold: default_dedupe_overlap_threshold(),
+            excerpt_lines: None,
         }
     }
 }
