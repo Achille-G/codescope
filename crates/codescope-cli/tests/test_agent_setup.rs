@@ -9,6 +9,7 @@ use std::process::Command;
 use tempfile::TempDir;
 
 #[test]
+#[allow(deprecated)]
 fn test_agent_setup_no_files() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
@@ -17,18 +18,23 @@ fn test_agent_setup_no_files() {
         .current_dir(temp_dir.path())
         .assert()
         .success()
-        .stdout(predicates::str::contains("No agent configuration files found"));
+        .stdout(predicates::str::contains(
+            "No agent configuration files found",
+        ));
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_agent_setup_idempotent() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create CLAUDE.md with existing codescope instructions (full content)
     let claude_md = temp_dir.path().join("CLAUDE.md");
     let mut file = File::create(&claude_md).expect("Failed to create CLAUDE.md");
-    file.write_all(b"## codescope - Semantic Code Search\n\nAlready configured.\ncodescope search\n")
-        .expect("Failed to write");
+    file.write_all(
+        b"## codescope - Semantic Code Search\n\nAlready configured.\ncodescope search\n",
+    )
+    .expect("Failed to write");
 
     // Run agent-setup
     Command::new(cargo_bin("codescope"))
@@ -45,6 +51,7 @@ fn test_agent_setup_idempotent() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_agent_setup_adds_instructions() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
@@ -70,15 +77,17 @@ fn test_agent_setup_adds_instructions() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_agent_setup_multiple_files() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create multiple agent files
     for file_name in [".cursorrules", ".windsurfrules", "CLAUDE.md"] {
         let path = temp_dir.path().join(file_name);
-        let mut file = File::create(&path).expect(&format!("Failed to create {file_name}"));
+        let mut file =
+            File::create(&path).unwrap_or_else(|_| panic!("Failed to create {file_name}"));
         file.write_all(format!("# {file_name}\n\n").as_bytes())
-            .expect(&format!("Failed to write to {file_name}"));
+            .unwrap_or_else(|_| panic!("Failed to write to {file_name}"));
     }
 
     // Run agent-setup
