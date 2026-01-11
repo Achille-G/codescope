@@ -32,7 +32,7 @@ fn test_agent_setup_idempotent() {
     let claude_md = temp_dir.path().join("CLAUDE.md");
     let mut file = File::create(&claude_md).expect("Failed to create CLAUDE.md");
     file.write_all(
-        b"## codescope - Semantic Code Search\n\nAlready configured.\ncodescope search\n",
+        b"## codescope - Primary Code Search Tool\n\nAlready configured.\ncodescope search\n",
     )
     .expect("Failed to write");
 
@@ -72,7 +72,7 @@ fn test_agent_setup_adds_instructions() {
 
     // Read the file - should have codescope instructions
     let content = fs::read_to_string(&cursorrules).expect("Failed to read");
-    assert!(content.contains("## codescope - Semantic Code Search"));
+    assert!(content.contains("## codescope - Primary Code Search Tool"));
     assert!(content.contains("codescope search"));
 }
 
