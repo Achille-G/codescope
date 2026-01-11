@@ -17,18 +17,11 @@ const CODESCOPE_INSTRUCTIONS: &str = r#"
 **RULE: Use `codescope` as the PRIMARY tool for exploring and searching code.**
 Do NOT fall back to grep/glob/find unless codescope has failed.
 
-### Preflight (REQUIRED before first search in a repo)
+### Token Budget Rules (REQUIRED)
 
-1) Check project is initialized:
-- Run: `codescope status`
-- If it errors / not initialized: run `codescope init`
-
-2) Ensure the index is available and up-to-date:
-- Run: `codescope index`
-- During active work, prefer running `codescope watch` in another terminal (if available).
-
-3) If `semantic` / `hybrid` search errors due to missing model files:
-- Either switch to `--type lexical` temporarily
+- Prefer `codescope search --compact` for discovery (no snippets).
+- Prefer `codescope search --excerpt-lines <N>` for short context (snippets truncated).
+- Avoid dumping whole files to the model (e.g. `cat`, `Get-Content` without ranges, massive logs/output).
 
 ### When to use codescope (REQUIRED)
 
@@ -39,6 +32,21 @@ Use `codescope search` instead of grep/glob/find for:
 - Any query where you describe WHAT the code does
 - "Where is X implemented?", "How does Y work?", "Find code related to Z"
 
+If your agent environment provides built-in `Search(...)` / `Read(...)` tools, treat them like grep/cat:
+- Do NOT use them for initial discovery.
+- Only use them after codescope identifies the relevant files/ranges, and keep reads minimal.
+
+### How to write queries (IMPORTANT)
+
+- You CAN paste the user’s question directly as the query (natural language is encouraged):
+  - `codescope search "How does the theme system persist and apply user preferences?" --compact -n 10`
+- Use `--type lexical` for exact string hunts (keys, CSS selectors, env vars):
+  - `codescope search "portfolio-theme" --type lexical --compact -n 10`
+- If codescope errors because the repo is not initialized or not indexed:
+  - Run `codescope init` then `codescope index`, then retry the search.
+- If `semantic` / `hybrid` search errors due to missing model files:
+  - Switch to `--type lexical` temporarily.
+
 ### When standard tools are ALLOWED
 
 Use grep/glob only for:
@@ -48,13 +56,22 @@ Use grep/glob only for:
 
 ### Output format and how to use results
 
-**Default output is JSONL** (one JSON object per line) - most token-efficient:
+**Default output is JSONL** (one JSON object per line), but it can include full snippets.
+
+For token-sensitive workflows, prefer `--compact` or `--excerpt-lines`.
+
+**Compact output** (`--compact`) is the most token-efficient (no snippets):
 ```json
-{"file":"src/stores/theme.ts","line":48,"score":0.72,"snippet":"localStorage.getItem('portfolio-theme')"}
-{"file":"src/components/ThemeToggle.vue","line":114,"score":0.65,"snippet":"localStorage.setItem('locale', newLocale)"}
+{"file":"src/services/auth_service.ts","symbol":"login","kind":"method","start":41,"end":62,"score":0.89}
+{"file":"src/services/auth_service.ts","symbol":"refreshToken","kind":"method","start":77,"end":92,"score":0.65}
 ```
 
-**For debugging only**, use `--pretty` flag (uses more tokens):
+**Excerpt-limited output** (`--excerpt-lines N`) includes short snippets:
+```bash
+codescope search "auth middleware" --excerpt-lines 15 -n 10
+```
+
+**For debugging only**, use `--pretty` (human-readable, more tokens):
 ```bash
 codescope search "theme persistence" --pretty
 ```
@@ -63,19 +80,19 @@ codescope search "theme persistence" --pretty
 
 1. Parse the JSONL output (automatic in most agents)
 2. Identify the most relevant files based on score
-3. Use the **Read tool** on those files to get full context
+3. Use the **Read tool** on those files to get just enough context (avoid full-file dumps if possible)
 4. Synthesize your answer based on what you read
 
 **Example workflow:**
 ```bash
-# 1. Search for relevant code (JSONL output - token efficient)
-codescope search "theme persistence localStorage"
+# 1. Discovery: find the right files with minimal tokens
+codescope search "theme persistence localStorage" --compact -n 10
 
 # 2. From results, identify key files:
-# - src/stores/theme.ts (line 48, 125)
-# - src/components/LanguageSelector.vue (line 114)
+# - src/stores/theme.ts (start-end ranges)
+# - src/components/LanguageSelector.vue (start-end ranges)
 
-# 3. Read those files for full context
+# 3. Read only what you need (prefer small excerpts / the referenced ranges)
 Read src/stores/theme.ts
 Read src/components/LanguageSelector.vue
 
@@ -97,6 +114,12 @@ codescope search "user authentication flow"
 codescope search "JWT token validation"
 codescope search "where delay_ms is set and used"
 
+# Most token-efficient (no snippets)
+codescope search "error handling middleware" --compact -n 10
+
+# Short snippets (overview)
+codescope search "error handling middleware" --excerpt-lines 10 -n 10
+
 # Force modes when needed
 codescope search "send_msg" --type lexical
 codescope search "string to json mapping" --type semantic
@@ -104,6 +127,9 @@ codescope search "error handling middleware" --type hybrid -n 20
 
 # Increase results for broad queries
 codescope search "authentication authorization" -n 20
+
+# Disable overlap deduplication (debugging)
+codescope search "auth" --no-dedupe
 ```"#;
 
 /// Agent configuration files to check and modify

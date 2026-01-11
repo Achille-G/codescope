@@ -1,6 +1,6 @@
 # Epic 15: Token Optimization for AI Agents
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 
 ## Description
 
@@ -177,7 +177,7 @@ codescope search "query" --compact -n 10
 
 ### 15.5 Agent Workflow Documentation
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Document optimal workflows for AI agents.
 
