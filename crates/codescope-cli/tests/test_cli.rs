@@ -33,6 +33,7 @@ fn test_cli_search_help_includes_dedupe() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--dedupe"))
+        .stdout(predicate::str::contains("--no-dedupe"))
         .stdout(predicate::str::contains("--compact"))
         .stdout(predicate::str::contains("--excerpt-lines"));
 }
@@ -285,6 +286,44 @@ fn test_cli_search_pretty_output() {
 }
 
 #[test]
+fn test_cli_search_full_output_includes_snippet() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function testFunction(): void {
+    console.log('test');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("search")
+        .arg("testFunction")
+        .arg("--type")
+        .arg("lexical")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"file\""))
+        .stdout(predicate::str::contains("\"snippet\""));
+}
+
+#[test]
 fn test_cli_search_compact_output_omits_snippet() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
@@ -321,6 +360,43 @@ export function testFunction(): void {
         .success()
         .stdout(predicate::str::contains("\"file\""))
         .stdout(predicate::str::contains("\"snippet\"").not());
+}
+
+#[test]
+fn test_cli_search_no_dedupe_flag_is_accepted() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function testFunction(): void {
+    console.log('test');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("search")
+        .arg("testFunction")
+        .arg("--type")
+        .arg("lexical")
+        .arg("--no-dedupe")
+        .assert()
+        .success();
 }
 
 #[test]

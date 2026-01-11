@@ -135,7 +135,7 @@ function authenticateJWT(req, res, next) {
 
 ### 15.4 Unified Token-Saving Flags
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Combine flags for optimal agent workflows.
 

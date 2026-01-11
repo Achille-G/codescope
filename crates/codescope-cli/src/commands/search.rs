@@ -9,6 +9,27 @@ use tracing::info;
 
 use crate::commands::errors::NoResultsError;
 
+#[derive(Debug, Clone, Copy)]
+enum OutputMode {
+    Full,
+    Compact,
+    Truncated { max_lines: usize },
+}
+
+impl OutputMode {
+    fn from_flags(compact: bool, excerpt_lines: Option<usize>) -> Self {
+        if compact {
+            return Self::Compact;
+        }
+
+        if let Some(max_lines) = excerpt_lines {
+            return Self::Truncated { max_lines };
+        }
+
+        Self::Full
+    }
+}
+
 pub fn run(
     query: &str,
     top: usize,
@@ -27,6 +48,8 @@ pub fn run(
     if let Some(0) = excerpt_lines {
         return Err(anyhow::anyhow!("--excerpt-lines must be >= 1"));
     }
+
+    let output_mode = OutputMode::from_flags(compact, excerpt_lines);
 
     let dedupe_enabled = project.config().search.dedupe && dedupe;
     let dedupe_threshold = project.config().search.dedupe_overlap_threshold;
@@ -81,20 +104,27 @@ pub fn run(
                 r.end,
                 r.symbol.as_deref().unwrap_or("-")
             );
-            if !compact {
-                let max_lines = excerpt_lines.unwrap_or(8);
-                println!("{}", r.truncated_snippet(max_lines));
-                println!();
+
+            match output_mode {
+                OutputMode::Compact => {}
+                OutputMode::Full => {
+                    println!("{}", r.truncated_snippet(8));
+                    println!();
+                }
+                OutputMode::Truncated { max_lines } => {
+                    println!("{}", r.truncated_snippet(max_lines));
+                    println!();
+                }
             }
         }
     } else {
         for r in &results.results {
-            if compact {
-                println!("{}", r.to_compact_jsonl());
-            } else if let Some(max_lines) = excerpt_lines {
-                println!("{}", r.to_jsonl_with_limit(max_lines));
-            } else {
-                println!("{}", r.to_jsonl());
+            match output_mode {
+                OutputMode::Full => println!("{}", r.to_jsonl()),
+                OutputMode::Compact => println!("{}", r.to_compact_jsonl()),
+                OutputMode::Truncated { max_lines } => {
+                    println!("{}", r.to_jsonl_with_limit(max_lines))
+                }
             }
         }
     }

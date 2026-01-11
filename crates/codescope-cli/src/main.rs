@@ -85,6 +85,10 @@ enum Commands {
         /// Deduplicate overlapping chunks (default: true)
         #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true")]
         dedupe: bool,
+
+        /// Disable overlap deduplication (debugging)
+        #[arg(long, conflicts_with = "dedupe")]
+        no_dedupe: bool,
     },
 
     /// Show project status
@@ -139,7 +143,11 @@ fn main() -> std::process::ExitCode {
             compact,
             excerpt_lines,
             dedupe,
-        } => commands::search::run(&query, top, pretty, &r#type, compact, excerpt_lines, dedupe),
+            no_dedupe,
+        } => {
+            let dedupe = if no_dedupe { false } else { dedupe };
+            commands::search::run(&query, top, pretty, &r#type, compact, excerpt_lines, dedupe)
+        }
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),
