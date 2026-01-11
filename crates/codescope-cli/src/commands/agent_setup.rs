@@ -8,13 +8,14 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 /// Marker text to detect if codescope instructions are already present
-const CODESCOPE_MARKER: &str = "## codescope - Semantic Code Search";
+const CODESCOPE_MARKER: &str = "## codescope - Primary Code Search Tool";
 
 /// Instructions to append to agent configuration files
 const CODESCOPE_INSTRUCTIONS: &str = r#"
 ## codescope - Primary Code Search Tool (Offline, Per-Repo)
 
 **RULE: Use `codescope` as the PRIMARY tool for exploring and searching code.**
+Do NOT fall back to grep/glob/find unless codescope has failed.
 
 ### Preflight (REQUIRED before first search in a repo)
 
@@ -32,26 +33,66 @@ const CODESCOPE_INSTRUCTIONS: &str = r#"
 ### When to use codescope (REQUIRED)
 
 Use `codescope search` instead of grep/glob/find for:
-- Locating functionality by intent (“authentication flow”, “error handling middleware”)
+- Locating functionality by intent ("authentication flow", "error handling middleware")
 - Understanding unfamiliar code areas
 - Finding related components across languages
 - Any query where you describe WHAT the code does
+- "Where is X implemented?", "How does Y work?", "Find code related to Z"
 
-### When standard tools are allowed
+### When standard tools are ALLOWED
 
 Use grep/glob only for:
-- Exact string presence (e.g., exact variable name, exact import string)
-- File path pattern scanning (e.g., `**/*.rs`) when you don't need semantics
+- Exact string presence AFTER codescope identified relevant files
+- File path pattern scanning when you already know the directory structure
+- ONLY if codescope returned no results or errors
+
+### Output format and how to use results
+
+**Default output is JSONL** (one JSON object per line) - most token-efficient:
+```json
+{"file":"src/stores/theme.ts","line":48,"score":0.72,"snippet":"localStorage.getItem('portfolio-theme')"}
+{"file":"src/components/ThemeToggle.vue","line":114,"score":0.65,"snippet":"localStorage.setItem('locale', newLocale)"}
+```
+
+**For debugging only**, use `--pretty` flag (uses more tokens):
+```bash
+codescope search "theme persistence" --pretty
+```
+
+**Workflow after running codescope search:**
+
+1. Parse the JSONL output (automatic in most agents)
+2. Identify the most relevant files based on score
+3. Use the **Read tool** on those files to get full context
+4. Synthesize your answer based on what you read
+
+**Example workflow:**
+```bash
+# 1. Search for relevant code (JSONL output - token efficient)
+codescope search "theme persistence localStorage"
+
+# 2. From results, identify key files:
+# - src/stores/theme.ts (line 48, 125)
+# - src/components/LanguageSelector.vue (line 114)
+
+# 3. Read those files for full context
+Read src/stores/theme.ts
+Read src/components/LanguageSelector.vue
+
+# 4. Synthesize your answer from what you read
+```
 
 ### Query language guidance
 
 - Default embedding model is multilingual, so French or English both work.
 - If results are weak, try rephrasing in English and/or add more constraints (function name, module, protocol, error code).
+- Be specific about intent: "user login flow" > "login"
+- Mention related concepts: "token storage and validation"
 
 ### Usage examples
 
 ```bash
-# Hybrid is the default mode (recommended)
+# Hybrid is the default mode (recommended) - uses JSONL output
 codescope search "user authentication flow"
 codescope search "JWT token validation"
 codescope search "where delay_ms is set and used"
@@ -61,11 +102,9 @@ codescope search "send_msg" --type lexical
 codescope search "string to json mapping" --type semantic
 codescope search "error handling middleware" --type hybrid -n 20
 
-# Human-readable output (default output is JSONL)
-codescope search "database connection pool" --pretty
-
-
-"#;
+# Increase results for broad queries
+codescope search "authentication authorization" -n 20
+```"#;
 
 /// Agent configuration files to check and modify
 const AGENT_FILES: &[&str] = &[
