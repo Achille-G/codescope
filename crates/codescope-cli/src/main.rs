@@ -73,6 +73,10 @@ enum Commands {
         /// Search type (lexical, semantic, hybrid)
         #[arg(short = 't', long, default_value = "hybrid")]
         r#type: String,
+
+        /// Deduplicate overlapping chunks (default: true)
+        #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true")]
+        dedupe: bool,
     },
 
     /// Show project status
@@ -123,7 +127,8 @@ fn main() -> std::process::ExitCode {
             top,
             pretty,
             r#type,
-        } => commands::search::run(&query, top, pretty, &r#type),
+            dedupe,
+        } => commands::search::run(&query, top, pretty, &r#type, dedupe),
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),

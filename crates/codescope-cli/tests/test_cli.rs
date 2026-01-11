@@ -27,6 +27,15 @@ fn test_cli_help() {
 }
 
 #[test]
+fn test_cli_search_help_includes_dedupe() {
+    let mut cmd = codescope_cmd();
+    cmd.args(["search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--dedupe"));
+}
+
+#[test]
 fn test_cli_version() {
     let mut cmd = codescope_cmd();
     cmd.arg("--version").assert().success();

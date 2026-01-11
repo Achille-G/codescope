@@ -79,6 +79,14 @@ pub struct SearchConfig {
     /// Weight for BM25 in hybrid search (0.0-1.0)
     #[serde(default = "default_bm25_weight")]
     pub bm25_weight: f32,
+
+    /// Deduplicate overlapping chunks in output (token optimization)
+    #[serde(default = "default_dedupe")]
+    pub dedupe: bool,
+
+    /// Overlap ratio threshold (overlap / min(chunk_len_a, chunk_len_b))
+    #[serde(default = "default_dedupe_overlap_threshold")]
+    pub dedupe_overlap_threshold: f64,
 }
 
 fn default_top_k() -> usize {
@@ -93,12 +101,22 @@ fn default_bm25_weight() -> f32 {
     0.5
 }
 
+fn default_dedupe() -> bool {
+    true
+}
+
+fn default_dedupe_overlap_threshold() -> f64 {
+    0.5
+}
+
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
             default_top_k: default_top_k(),
             rrf_k: default_rrf_k(),
             bm25_weight: default_bm25_weight(),
+            dedupe: default_dedupe(),
+            dedupe_overlap_threshold: default_dedupe_overlap_threshold(),
         }
     }
 }

@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::commands::errors::NoResultsError;
 
-pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<()> {
+pub fn run(query: &str, top: usize, pretty: bool, search_type: &str, dedupe: bool) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
     let project = Project::find(&current_dir)
@@ -26,7 +26,7 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
     let search_type = codescope_search::result::SearchType::from_str(search_type)
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    let results = match search_type {
+    let mut results = match search_type {
         codescope_search::result::SearchType::Lexical => engine.search_lexical(query, top)?,
         codescope_search::result::SearchType::Semantic => {
             let pipeline = codescope_core::build_embedding_pipeline(&project)?;
@@ -39,6 +39,11 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
             engine.search_hybrid(query, &embeddings[0], top, FusionStrategy::Rrf { k: 60.0 })?
         }
     };
+
+    let dedupe_enabled = project.config().search.dedupe && dedupe;
+    if dedupe_enabled {
+        results.deduplicate(project.config().search.dedupe_overlap_threshold);
+    }
 
     info!(
         "search type={}, took_ms={}, count={}",

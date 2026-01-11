@@ -1,6 +1,6 @@
 # Epic 15: Token Optimization for AI Agents
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 
 ## Description
 
@@ -22,7 +22,7 @@ Current search results return full code excerpts, causing high token usage:
 
 ### 15.1 Automatic Chunk Deduplication
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Problem**: Overlapping chunks (>50% overlap) are returned as separate results.
 
