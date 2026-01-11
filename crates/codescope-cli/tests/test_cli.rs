@@ -27,6 +27,18 @@ fn test_cli_help() {
 }
 
 #[test]
+fn test_cli_search_help_includes_dedupe() {
+    let mut cmd = codescope_cmd();
+    cmd.args(["search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--dedupe"))
+        .stdout(predicate::str::contains("--no-dedupe"))
+        .stdout(predicate::str::contains("--compact"))
+        .stdout(predicate::str::contains("--excerpt-lines"));
+}
+
+#[test]
 fn test_cli_version() {
     let mut cmd = codescope_cmd();
     cmd.arg("--version").assert().success();
@@ -271,6 +283,194 @@ fn test_cli_search_pretty_output() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Query:"));
+}
+
+#[test]
+fn test_cli_search_full_output_includes_snippet() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function testFunction(): void {
+    console.log('test');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("search")
+        .arg("testFunction")
+        .arg("--type")
+        .arg("lexical")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"file\""))
+        .stdout(predicate::str::contains("\"snippet\""));
+}
+
+#[test]
+fn test_cli_search_compact_output_omits_snippet() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function testFunction(): void {
+    console.log('test');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("search")
+        .arg("testFunction")
+        .arg("--type")
+        .arg("lexical")
+        .arg("--compact")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"file\""))
+        .stdout(predicate::str::contains("\"snippet\"").not());
+}
+
+#[test]
+fn test_cli_search_no_dedupe_flag_is_accepted() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function testFunction(): void {
+    console.log('test');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("search")
+        .arg("testFunction")
+        .arg("--type")
+        .arg("lexical")
+        .arg("--no-dedupe")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_search_excerpt_lines_truncates_jsonl_snippet() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    std::fs::write(
+        temp_dir.path().join("test.ts"),
+        r#"
+export function longFunction(): void {
+    console.log('line1');
+    console.log('line2');
+    console.log('line3');
+    console.log('line4');
+}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("index")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    let assert = cmd
+        .current_dir(temp_dir.path())
+        .arg("search")
+        .arg("longFunction")
+        .arg("--type")
+        .arg("lexical")
+        .arg("--excerpt-lines")
+        .arg("2")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 stdout");
+    let first_line = stdout
+        .lines()
+        .find(|line| line.trim_start().starts_with('{'))
+        .expect("at least one JSONL line");
+    let parsed: serde_json::Value = serde_json::from_str(first_line).expect("valid JSONL");
+    let snippet = parsed["snippet"]
+        .as_str()
+        .expect("compact mode should not be enabled");
+
+    // 2 snippet lines + an "..." truncation line at most.
+    assert!(snippet.lines().count() <= 3);
+    assert!(snippet.trim_end().ends_with("..."));
+}
+
+#[test]
+fn test_cli_search_excerpt_lines_rejects_zero() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let mut cmd = codescope_cmd();
+    cmd.current_dir(temp_dir.path())
+        .args(["search", "query", "--excerpt-lines", "0"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--excerpt-lines must be >= 1"));
 }
 
 #[test]

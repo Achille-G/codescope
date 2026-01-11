@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **codescope** is a fast, offline, multi-OS CLI tool for structural and semantic code search. Primary consumer is AI agents (JSONL output by default).
 
+For token-efficient workflows, prefer `codescope search --compact` (file ranges only) or `codescope search --excerpt-lines <N>` (short snippets); overlap dedupe is enabled by default (disable with `--no-dedupe` for debugging).
+
 ## Build Commands
 
 ```bash

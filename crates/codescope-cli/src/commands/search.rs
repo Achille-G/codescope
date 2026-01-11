@@ -9,11 +9,50 @@ use tracing::info;
 
 use crate::commands::errors::NoResultsError;
 
-pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<()> {
+#[derive(Debug, Clone, Copy)]
+enum OutputMode {
+    Full,
+    Compact,
+    Truncated { max_lines: usize },
+}
+
+impl OutputMode {
+    fn from_flags(compact: bool, excerpt_lines: Option<usize>) -> Self {
+        if compact {
+            return Self::Compact;
+        }
+
+        if let Some(max_lines) = excerpt_lines {
+            return Self::Truncated { max_lines };
+        }
+
+        Self::Full
+    }
+}
+
+pub fn run(
+    query: &str,
+    top: usize,
+    pretty: bool,
+    search_type: &str,
+    compact: bool,
+    excerpt_lines: Option<usize>,
+    dedupe: bool,
+) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
     let project = Project::find(&current_dir)
         .context("Not in a codescope project. Run 'codescope init' first.")?;
+
+    let excerpt_lines = excerpt_lines.or(project.config().search.excerpt_lines);
+    if let Some(0) = excerpt_lines {
+        return Err(anyhow::anyhow!("--excerpt-lines must be >= 1"));
+    }
+
+    let output_mode = OutputMode::from_flags(compact, excerpt_lines);
+
+    let dedupe_enabled = project.config().search.dedupe && dedupe;
+    let dedupe_threshold = project.config().search.dedupe_overlap_threshold;
 
     let paths = SearchPaths::new(
         project.meta_db_path(),
@@ -26,7 +65,7 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
     let search_type = codescope_search::result::SearchType::from_str(search_type)
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    let results = match search_type {
+    let mut results = match search_type {
         codescope_search::result::SearchType::Lexical => engine.search_lexical(query, top)?,
         codescope_search::result::SearchType::Semantic => {
             let pipeline = codescope_core::build_embedding_pipeline(&project)?;
@@ -39,6 +78,10 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
             engine.search_hybrid(query, &embeddings[0], top, FusionStrategy::Rrf { k: 60.0 })?
         }
     };
+
+    if dedupe_enabled {
+        results.deduplicate(dedupe_threshold);
+    }
 
     info!(
         "search type={}, took_ms={}, count={}",
@@ -61,12 +104,28 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str) -> Result<(
                 r.end,
                 r.symbol.as_deref().unwrap_or("-")
             );
-            println!("{}", r.truncated_snippet(8));
-            println!();
+
+            match output_mode {
+                OutputMode::Compact => {}
+                OutputMode::Full => {
+                    println!("{}", r.truncated_snippet(8));
+                    println!();
+                }
+                OutputMode::Truncated { max_lines } => {
+                    println!("{}", r.truncated_snippet(max_lines));
+                    println!();
+                }
+            }
         }
     } else {
         for r in &results.results {
-            println!("{}", r.to_jsonl());
+            match output_mode {
+                OutputMode::Full => println!("{}", r.to_jsonl()),
+                OutputMode::Compact => println!("{}", r.to_compact_jsonl()),
+                OutputMode::Truncated { max_lines } => {
+                    println!("{}", r.to_jsonl_with_limit(max_lines))
+                }
+            }
         }
     }
 

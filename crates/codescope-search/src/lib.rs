@@ -7,6 +7,7 @@
 //! - SQLite storage for metadata
 
 pub mod bm25;
+pub mod dedupe;
 pub mod engine;
 pub mod error;
 pub mod fusion;

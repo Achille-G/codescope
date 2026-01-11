@@ -1,6 +1,6 @@
 # Epic 15: Token Optimization for AI Agents
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 ## Description
 
@@ -22,7 +22,7 @@ Current search results return full code excerpts, causing high token usage:
 
 ### 15.1 Automatic Chunk Deduplication
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Problem**: Overlapping chunks (>50% overlap) are returned as separate results.
 
@@ -60,7 +60,7 @@ auth.js:1-50     ← Only one chunk retained
 
 ### 15.2 Compact Mode (--compact)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Returns only file:line references without code excerpts.
 
@@ -93,7 +93,7 @@ auth.js:1-50     ← Only one chunk retained
 
 ### 15.3 Configurable Excerpt Lines (--excerpt-lines)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Limit displayed lines per chunk to N lines.
 
@@ -135,7 +135,7 @@ function authenticateJWT(req, res, next) {
 
 ### 15.4 Unified Token-Saving Flags
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Combine flags for optimal agent workflows.
 
@@ -177,7 +177,7 @@ codescope search "query" --compact -n 10
 
 ### 15.5 Agent Workflow Documentation
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Document optimal workflows for AI agents.
 

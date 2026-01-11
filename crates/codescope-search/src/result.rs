@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::dedupe::ChunkDeduplicator;
+
 /// A single search result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
@@ -76,6 +78,41 @@ impl SearchResult {
     pub fn to_jsonl(&self) -> String {
         serde_json::to_string(self).unwrap_or_default()
     }
+
+    /// Format as compact JSONL (no snippet) for token optimization
+    pub fn to_compact_jsonl(&self) -> String {
+        // Create a minimal result without snippet for token savings
+        let compact = CompactSearchResult {
+            file: &self.file,
+            symbol: self.symbol.as_deref(),
+            kind: &self.kind,
+            start: self.start,
+            end: self.end,
+            score: self.score,
+        };
+        serde_json::to_string(&compact).unwrap_or_default()
+    }
+
+    /// Format as JSONL with truncated snippet
+    pub fn to_jsonl_with_limit(&self, max_lines: usize) -> String {
+        let mut result = self.clone();
+        if self.snippet.lines().count() > max_lines {
+            result.snippet = self.truncated_snippet(max_lines);
+        }
+        serde_json::to_string(&result).unwrap_or_default()
+    }
+}
+
+/// Compact result without snippet (for token optimization)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CompactSearchResult<'a> {
+    pub file: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<&'a str>,
+    pub kind: &'a str,
+    pub start: u32,
+    pub end: u32,
+    pub score: f32,
 }
 
 /// Search results with metadata
@@ -95,6 +132,16 @@ pub struct SearchResults {
 
     /// The results
     pub results: Vec<SearchResult>,
+}
+
+impl SearchResults {
+    /// Remove overlapping chunks (>50% overlap), keeping earlier chunks.
+    pub fn deduplicate(&mut self, overlap_threshold: f64) {
+        let deduper = ChunkDeduplicator::new(overlap_threshold);
+        let results = std::mem::take(&mut self.results);
+        self.results = deduper.deduplicate(results);
+        self.count = self.results.len();
+    }
 }
 
 /// Type of search performed
@@ -164,5 +211,95 @@ mod tests {
 
         let truncated = result.truncated_snippet(3);
         assert!(truncated.ends_with("..."));
+    }
+
+    #[test]
+    fn test_deduplication_removes_overlapping() {
+        let mut results = SearchResults {
+            query: "test".to_string(),
+            search_type: SearchType::Hybrid,
+            count: 3,
+            took_ms: 10,
+            results: vec![
+                SearchResult::new(
+                    "auth.js".to_string(),
+                    None,
+                    "function".to_string(),
+                    1,
+                    50,
+                    0.9,
+                    "function auth() { }".to_string(),
+                ),
+                // 20-70 overlaps 1-50 by 31 lines (62% of first chunk) - should be removed
+                SearchResult::new(
+                    "auth.js".to_string(),
+                    None,
+                    "function".to_string(),
+                    20,
+                    70,
+                    0.8,
+                    "function auth() { more code }".to_string(),
+                ),
+                SearchResult::new(
+                    "other.js".to_string(),
+                    None,
+                    "function".to_string(),
+                    1,
+                    50,
+                    0.7,
+                    "function other() { }".to_string(),
+                ),
+            ],
+        };
+
+        results.deduplicate(0.5);
+
+        // Should keep auth.js:1-50 and other.js (different file)
+        assert_eq!(results.count, 2);
+        assert_eq!(results.results.len(), 2);
+        assert!(results
+            .results
+            .iter()
+            .any(|r| r.file == "auth.js" && r.start == 1));
+        assert!(results.results.iter().any(|r| r.file == "other.js"));
+    }
+
+    #[test]
+    fn test_compact_jsonl_no_snippet() {
+        let result = SearchResult::new(
+            "src/main.rs".to_string(),
+            Some("main".to_string()),
+            "function".to_string(),
+            1,
+            10,
+            0.95,
+            "fn main() { println!(\"hello\"); }".to_string(),
+        );
+
+        let compact = result.to_compact_jsonl();
+        let parsed: serde_json::Value = serde_json::from_str(&compact).unwrap();
+
+        assert_eq!(parsed["file"], "src/main.rs");
+        assert_eq!(parsed["symbol"], "main");
+        assert!(parsed["snippet"].is_null());
+    }
+
+    #[test]
+    fn test_jsonl_with_limit() {
+        let result = SearchResult::new(
+            "test.rs".to_string(),
+            None,
+            "function".to_string(),
+            1,
+            100,
+            0.5,
+            "line1\nline2\nline3\nline4\nline5\nline6".to_string(),
+        );
+
+        let jsonl = result.to_jsonl_with_limit(3);
+        let parsed: serde_json::Value = serde_json::from_str(&jsonl).unwrap();
+
+        // Should be truncated
+        assert!(parsed["snippet"].as_str().unwrap().contains("..."));
     }
 }
