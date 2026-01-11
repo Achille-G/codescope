@@ -74,6 +74,10 @@ enum Commands {
         #[arg(short = 't', long, default_value = "hybrid")]
         r#type: String,
 
+        /// Compact output (no code snippets; file ranges only)
+        #[arg(long)]
+        compact: bool,
+
         /// Deduplicate overlapping chunks (default: true)
         #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true")]
         dedupe: bool,
@@ -127,8 +131,9 @@ fn main() -> std::process::ExitCode {
             top,
             pretty,
             r#type,
+            compact,
             dedupe,
-        } => commands::search::run(&query, top, pretty, &r#type, dedupe),
+        } => commands::search::run(&query, top, pretty, &r#type, compact, dedupe),
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),

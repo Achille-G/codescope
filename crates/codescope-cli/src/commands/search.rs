@@ -9,7 +9,14 @@ use tracing::info;
 
 use crate::commands::errors::NoResultsError;
 
-pub fn run(query: &str, top: usize, pretty: bool, search_type: &str, dedupe: bool) -> Result<()> {
+pub fn run(
+    query: &str,
+    top: usize,
+    pretty: bool,
+    search_type: &str,
+    compact: bool,
+    dedupe: bool,
+) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
     let project = Project::find(&current_dir)
@@ -66,12 +73,18 @@ pub fn run(query: &str, top: usize, pretty: bool, search_type: &str, dedupe: boo
                 r.end,
                 r.symbol.as_deref().unwrap_or("-")
             );
-            println!("{}", r.truncated_snippet(8));
-            println!();
+            if !compact {
+                println!("{}", r.truncated_snippet(8));
+                println!();
+            }
         }
     } else {
         for r in &results.results {
-            println!("{}", r.to_jsonl());
+            if compact {
+                println!("{}", r.to_compact_jsonl());
+            } else {
+                println!("{}", r.to_jsonl());
+            }
         }
     }
 

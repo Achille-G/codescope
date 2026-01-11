@@ -60,7 +60,7 @@ auth.js:1-50     ← Only one chunk retained
 
 ### 15.2 Compact Mode (--compact)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 
 **Description**: Returns only file:line references without code excerpts.
 
