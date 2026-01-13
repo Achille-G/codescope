@@ -97,3 +97,12 @@ cargo test -- --nocapture
 # Run specific test
 cargo test test_bm25_basic
 ```
+
+## Git Workflow
+
+When implementing epics or multi-ticket features:
+
+1. Don't push anything before being told to
+2. Create a branch from `dev` (e.g., `feat/epic-9-distribution`)
+3. One commit per ticket
+4. Use subagents or skills if needed for complex tasks
