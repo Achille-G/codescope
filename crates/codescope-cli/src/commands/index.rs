@@ -2,13 +2,15 @@
 
 use anyhow::{Context, Result};
 use codescope_core::{
-    ChangeDetector, FileParseConfig, FileParseOutcome, FileParser, FileReadConfig, FileReader,
-    Project,
+    ensure_model_downloaded, is_model_downloaded, ChangeDetector, DownloadProgress,
+    FileParseConfig, FileParseOutcome, FileParser, FileReadConfig, FileReader, Project,
 };
 use codescope_search::{BM25Index, HNSWIndex, Storage};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::env;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, warn};
 use xxhash_rust::xxh3::xxh3_64;
@@ -30,6 +32,48 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
             .template("{spinner:.green} {msg}")
             .unwrap(),
     );
+
+    // Check if model needs to be downloaded
+    if !is_model_downloaded(&project) {
+        pb.set_message("Downloading embedding model...");
+
+        let download_pb = ProgressBar::new(0);
+        download_pb.set_style(
+            ProgressStyle::with_template(
+                "[{elapsed_precise}] {bar:40.cyan/blue} {bytes}/{total_bytes} ({bytes_per_sec}) {msg}",
+            )
+            .unwrap()
+            .progress_chars("##-"),
+        );
+
+        let total_arc = Arc::new(AtomicU64::new(0));
+        let total_clone = total_arc.clone();
+
+        let result = ensure_model_downloaded(&project, Some(move |file: &str, progress: DownloadProgress| {
+            if let Some(total) = progress.total {
+                if total_clone.load(Ordering::Relaxed) != total {
+                    total_clone.store(total, Ordering::Relaxed);
+                    download_pb.set_length(total);
+                }
+            }
+            download_pb.set_position(progress.downloaded);
+            download_pb.set_message(file.to_string());
+        }));
+
+        match result {
+            Ok(true) => {
+                pb.set_message("Model downloaded successfully");
+            }
+            Ok(false) => {
+                // Model was already present (race condition check)
+            }
+            Err(e) => {
+                warn!("Failed to download model: {e}");
+                pb.set_message(format!("Model download failed: {e}"));
+                // Continue without embeddings
+            }
+        }
+    }
 
     if all {
         pb.set_message("Full re-index requested...");

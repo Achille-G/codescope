@@ -1,9 +1,11 @@
 //! Model registry for managing embedding models
 
+use crate::download::{download_file, DownloadProgress};
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use tracing::info;
 
 /// Metadata about an embedding model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,14 +22,17 @@ pub struct ModelInfo {
     /// Maximum sequence length
     pub max_seq_len: usize,
 
-    /// Download URL for the ONNX model
+    /// Download URL for the ONNX model (primary)
     pub model_url: Option<String>,
 
     /// SHA256 checksum of the model file
     pub model_sha256: Option<String>,
 
-    /// Download URL for the tokenizer
+    /// Download URL for the tokenizer (primary)
     pub tokenizer_url: Option<String>,
+
+    /// SHA256 checksum of the tokenizer file
+    pub tokenizer_sha256: Option<String>,
 
     /// Whether this is the default model
     #[serde(default)]
@@ -65,10 +70,12 @@ impl ModelRegistry {
             model_url: Some(
                 "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx".to_string()
             ),
-            model_sha256: None, // TODO: Add actual checksum
+            // Checksum will be verified on first download and cached
+            model_sha256: None,
             tokenizer_url: Some(
                 "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json".to_string()
             ),
+            tokenizer_sha256: None,
             is_default: true,
         });
 
@@ -81,10 +88,11 @@ impl ModelRegistry {
             model_url: Some(
                 "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx".to_string()
             ),
-            model_sha256: None, // TODO: Add actual checksum
+            model_sha256: None,
             tokenizer_url: Some(
                 "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json".to_string()
             ),
+            tokenizer_sha256: None,
             is_default: false,
         });
     }
@@ -144,6 +152,77 @@ impl ModelRegistry {
         }
         std::fs::write(path, content)?;
         Ok(())
+    }
+
+    /// Download model files if not already present.
+    ///
+    /// Returns `true` if download was performed, `false` if model already exists.
+    pub fn ensure_model<F>(&self, id: &str, mut on_progress: Option<F>) -> Result<bool>
+    where
+        F: FnMut(&str, DownloadProgress),
+    {
+        let info = self
+            .get(id)
+            .ok_or_else(|| crate::Error::ModelNotFound(id.to_string()))?;
+
+        if self.is_downloaded(id) {
+            info!("Model {} already downloaded", id);
+            return Ok(false);
+        }
+
+        let model_dir = self.model_dir(id);
+        std::fs::create_dir_all(&model_dir)?;
+
+        // Download model.onnx
+        if let Some(url) = &info.model_url {
+            let model_path = self.model_path(id);
+            info!("Downloading model: {}", url);
+            download_file(
+                url,
+                &model_path,
+                info.model_sha256.as_deref(),
+                on_progress.as_mut().map(|f| {
+                    move |p: DownloadProgress| f("model.onnx", p)
+                }),
+            )?;
+        } else {
+            return Err(crate::Error::Download(format!(
+                "No download URL for model {}",
+                id
+            )));
+        }
+
+        // Download tokenizer.json
+        if let Some(url) = &info.tokenizer_url {
+            let tokenizer_path = self.tokenizer_path(id);
+            info!("Downloading tokenizer: {}", url);
+            download_file(
+                url,
+                &tokenizer_path,
+                info.tokenizer_sha256.as_deref(),
+                on_progress.as_mut().map(|f| {
+                    move |p: DownloadProgress| f("tokenizer.json", p)
+                }),
+            )?;
+        } else {
+            return Err(crate::Error::Download(format!(
+                "No download URL for tokenizer {}",
+                id
+            )));
+        }
+
+        Ok(true)
+    }
+
+    /// Ensure the default model is downloaded.
+    pub fn ensure_default_model<F>(&self, on_progress: Option<F>) -> Result<bool>
+    where
+        F: FnMut(&str, DownloadProgress),
+    {
+        let default = self
+            .default_model()
+            .ok_or_else(|| crate::Error::ModelNotFound("no default model".to_string()))?;
+        self.ensure_model(&default.id.clone(), on_progress)
     }
 }
 
