@@ -2,7 +2,8 @@
 
 use crate::{Project, Result};
 use codescope_embed::{
-    EmbedderConfig, EmbeddingPipeline, ExecutionProvider, ModelRegistry, OnnxEmbedder,
+    DownloadProgress, EmbedderConfig, EmbeddingPipeline, ExecutionProvider, ModelRegistry,
+    OnnxEmbedder,
 };
 use std::path::PathBuf;
 
@@ -69,6 +70,34 @@ pub fn build_embedding_pipeline(project: &Project) -> Result<EmbeddingPipeline> 
         &resolved.config,
     )?;
     Ok(EmbeddingPipeline::new(Box::new(embedder)).with_batch_size(resolved.config.batch_size))
+}
+
+/// Ensure the embedding model is downloaded.
+///
+/// Downloads the model files if they don't exist. Returns `true` if download was performed.
+pub fn ensure_model_downloaded<F>(project: &Project, on_progress: Option<F>) -> Result<bool>
+where
+    F: FnMut(&str, DownloadProgress),
+{
+    let config = project.config();
+    let models_root =
+        crate::project::models_dir().unwrap_or_else(|| project.codescope_dir().join("models"));
+
+    let registry = ModelRegistry::new(models_root);
+
+    registry
+        .ensure_model(&config.embedding.model_id, on_progress)
+        .map_err(crate::Error::from)
+}
+
+/// Check if the embedding model is downloaded.
+pub fn is_model_downloaded(project: &Project) -> bool {
+    let config = project.config();
+    let models_root =
+        crate::project::models_dir().unwrap_or_else(|| project.codescope_dir().join("models"));
+
+    let registry = ModelRegistry::new(models_root);
+    registry.is_downloaded(&config.embedding.model_id)
 }
 
 #[cfg(test)]
