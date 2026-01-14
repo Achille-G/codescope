@@ -1,6 +1,6 @@
 //! Tree-sitter based parser
 
-use crate::{Chunk, ChunkKind, Error, Language, Result};
+use crate::{Chunk, ChunkKind, Error, Import, Language, Result};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 
@@ -29,6 +29,33 @@ impl Parser {
             return self.fallback_chunk(content);
         }
         Ok(chunks)
+    }
+
+    /// Parse a file and extract chunks + imports.
+    pub fn parse_with_imports(
+        &self,
+        content: &str,
+        language: Language,
+    ) -> Result<(Vec<Chunk>, Vec<Import>)> {
+        if !language.supports_ast_chunking() {
+            let chunks = self.fallback_chunk(content)?;
+            return Ok((chunks, Vec::new()));
+        }
+
+        let tree = self.parse_tree(content, language)?;
+        let imports = crate::import::extract_imports(tree.root_node(), content, language);
+        let mut chunks = self.extract_chunks(&tree, content, language)?;
+
+        if chunks.is_empty() {
+            chunks = self.fallback_chunk(content)?;
+            if let Some(chunk) = chunks.first_mut() {
+                // Best-effort: top-level calls in files without chunkable symbols.
+                chunk.call_sites =
+                    self.extract_call_sites_scoped(tree.root_node(), content, language);
+            }
+        }
+
+        Ok((chunks, imports))
     }
 
     /// Parse content into a tree-sitter tree
@@ -86,6 +113,9 @@ impl Parser {
             let class_name = if is_container { name.clone() } else { None };
 
             let mut chunk = Chunk::new(name, chunk_kind, start_line, end_line, chunk_content);
+            if matches!(chunk_kind, ChunkKind::Function | ChunkKind::Method) {
+                chunk.call_sites = self.extract_call_sites_scoped(node, content, language);
+            }
 
             if let Some(parent) = parent_name {
                 chunk = chunk.with_parent(parent.to_string());
@@ -109,6 +139,33 @@ impl Parser {
         for child in node.children(&mut cursor) {
             self.visit_node(child, content, language, chunks, parent_name);
         }
+    }
+
+    fn extract_call_sites_scoped(
+        &self,
+        root: tree_sitter::Node,
+        content: &str,
+        language: Language,
+    ) -> Vec<crate::CallSite> {
+        let mut sites = Vec::new();
+        let mut stack = vec![root];
+
+        while let Some(node) = stack.pop() {
+            if node != root && self.node_to_chunk_info(node, content, language).is_some() {
+                continue;
+            }
+
+            if let Some(site) = crate::call_site::extract_call_site(node, content, language) {
+                sites.push(site);
+            }
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                stack.push(child);
+            }
+        }
+
+        sites
     }
 
     /// Determine if a node represents a chunkable entity

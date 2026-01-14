@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::call_site::CallSite;
+
 /// Kind of code chunk
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -62,6 +64,10 @@ pub struct Chunk {
 
     /// Optional parent symbol (e.g., class name for a method)
     pub parent: Option<String>,
+
+    /// Call sites found within this chunk (best-effort).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub call_sites: Vec<CallSite>,
 }
 
 impl Chunk {
@@ -81,6 +87,7 @@ impl Chunk {
             end_line,
             content,
             parent: None,
+            call_sites: Vec::new(),
         }
     }
 
