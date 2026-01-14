@@ -23,7 +23,8 @@ fn test_cli_help() {
         .stdout(predicate::str::contains("codescope"))
         .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("index"))
-        .stdout(predicate::str::contains("search"));
+        .stdout(predicate::str::contains("search"))
+        .stdout(predicate::str::contains("codescope trace callees --help"));
 }
 
 #[test]
@@ -36,6 +37,31 @@ fn test_cli_search_help_includes_dedupe() {
         .stdout(predicate::str::contains("--no-dedupe"))
         .stdout(predicate::str::contains("--compact"))
         .stdout(predicate::str::contains("--excerpt-lines"));
+}
+
+#[test]
+fn test_cli_trace_help_includes_output_flags() {
+    let mut cmd = codescope_cmd();
+    cmd.args(["trace", "callers", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--pretty"))
+        .stdout(predicate::str::contains("--compact"));
+
+    let mut cmd = codescope_cmd();
+    cmd.args(["trace", "callees", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--pretty"))
+        .stdout(predicate::str::contains("--compact"));
+
+    let mut cmd = codescope_cmd();
+    cmd.args(["trace", "graph", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--pretty"))
+        .stdout(predicate::str::contains("--compact"))
+        .stdout(predicate::str::contains("--format"));
 }
 
 #[test]
