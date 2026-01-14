@@ -49,16 +49,19 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         let total_arc = Arc::new(AtomicU64::new(0));
         let total_clone = total_arc.clone();
 
-        let result = ensure_model_downloaded(&project, Some(move |file: &str, progress: DownloadProgress| {
-            if let Some(total) = progress.total {
-                if total_clone.load(Ordering::Relaxed) != total {
-                    total_clone.store(total, Ordering::Relaxed);
-                    download_pb.set_length(total);
+        let result = ensure_model_downloaded(
+            &project,
+            Some(move |file: &str, progress: DownloadProgress| {
+                if let Some(total) = progress.total {
+                    if total_clone.load(Ordering::Relaxed) != total {
+                        total_clone.store(total, Ordering::Relaxed);
+                        download_pb.set_length(total);
+                    }
                 }
-            }
-            download_pb.set_position(progress.downloaded);
-            download_pb.set_message(file.to_string());
-        }));
+                download_pb.set_position(progress.downloaded);
+                download_pb.set_message(file.to_string());
+            }),
+        );
 
         match result {
             Ok(true) => {
@@ -209,6 +212,18 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                     size_bytes,
                 )?;
 
+                // Replace imports for this file.
+                storage.delete_imports_for_file(file_id)?;
+                for import in &parsed.imports {
+                    storage.insert_import(
+                        file_id,
+                        &import.source,
+                        import.symbol.as_deref(),
+                        import.alias.as_deref(),
+                        import.is_default,
+                    )?;
+                }
+
                 // Remove old chunks for this file (if any), and reflect deletions in BM25/HNSW.
                 let old_chunk_ids = storage.delete_chunks_for_file(file_id)?;
                 if !old_chunk_ids.is_empty() {
@@ -232,6 +247,17 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                         &content_hash,
                         &chunk.content,
                     )?;
+
+                    for call in &chunk.call_sites {
+                        storage.insert_call_site(
+                            chunk_id,
+                            &call.callee_name,
+                            call.line,
+                            call.column,
+                            call.is_method,
+                            call.receiver.as_deref(),
+                        )?;
+                    }
 
                     bm25.add_document(
                         chunk_id,
@@ -281,6 +307,24 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
     hnsw.save(&project.hnsw_index_path())?;
 
     file_pb.finish_and_clear();
+
+    // Best-effort call-site resolution for call graph tracing.
+    let resolve_ids = storage.get_all_file_ids()?;
+    let resolve_pb = ProgressBar::new(resolve_ids.len() as u64);
+    resolve_pb.set_style(
+        ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
+    );
+    resolve_pb.set_message("Resolving call sites...");
+
+    let mut resolved_calls = 0usize;
+    for file_id in resolve_ids {
+        resolved_calls += storage.resolve_call_sites(file_id)?;
+        resolve_pb.inc(1);
+    }
+    resolve_pb.finish_and_clear();
+    info!("Resolved {resolved_calls} call sites");
 
     let elapsed = start.elapsed();
     println!("Indexed in {:.2}s", elapsed.as_secs_f64());

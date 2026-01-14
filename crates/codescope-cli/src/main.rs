@@ -20,6 +20,9 @@ fn print_error(err: &anyhow::Error, verbose: bool) {
 #[derive(Parser)]
 #[command(name = "codescope")]
 #[command(author, version, about = "Fast offline code search for AI agents", long_about = None)]
+#[command(
+    after_help = "Examples:\n  codescope search --help\n  codescope trace --help\n  codescope trace callees --help\n"
+)]
 struct Cli {
     /// Enable verbose logging
     #[arg(short, long, global = true)]
@@ -103,6 +106,12 @@ enum Commands {
 
     /// Configure AI agents to use codescope
     AgentSetup,
+
+    /// Trace call graph relationships
+    Trace {
+        #[command(subcommand)]
+        command: commands::trace::TraceCommand,
+    },
 }
 
 fn main() -> std::process::ExitCode {
@@ -151,6 +160,7 @@ fn main() -> std::process::ExitCode {
         Commands::Status => commands::status::run(),
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),
+        Commands::Trace { command } => commands::trace::run(command),
     };
 
     match result {

@@ -7,6 +7,17 @@
 - `-v, --verbose`: more logs (debug for codescope crates)
 - `-q, --quiet`: errors only
 
+## Help
+
+Every subcommand has its own help output (you can drill down as deep as you want):
+
+```bash
+codescope --help
+codescope search --help
+codescope trace --help
+codescope trace callees --help
+```
+
 ## `codescope init`
 
 Initializes `.codescope/` in the current directory:
@@ -93,6 +104,37 @@ Exit codes:
 - `0`: results printed
 - `2`: no results
 - `>0`: error (project not initialized, missing model files, etc.)
+
+## `codescope trace`
+
+Traces call graph relationships from the indexed metadata (best-effort cross-file resolution).
+
+Subcommands:
+- `codescope trace callers <SYMBOL> [--file <PATH>] [--pretty] [--compact]`
+- `codescope trace callees <SYMBOL> [--file <PATH>] [--pretty] [--compact]`
+- `codescope trace graph <SYMBOL> [--file <PATH>] [--depth <N>] [--format <jsonl|dot>] [--pretty] [--compact]`
+
+Examples:
+
+```bash
+codescope trace callers "processOrder"
+codescope trace callers "processOrder" --pretty
+codescope trace callees "processOrder" --file src/order.ts
+codescope trace graph "processOrder" --depth 3
+codescope trace graph "processOrder" --depth 3 --pretty
+codescope trace graph "processOrder" --format dot > graph.dot
+```
+
+Outputs:
+- JSONL (default) for callers/callees/graph
+- Graphviz DOT for `trace graph --format dot`
+- `trace callees --pretty` prints a best-effort target label (`file:line`, or `project|builtin|stdlib|external|unresolved`)
+
+Viewing DOT graphs (Graphviz):
+
+```bash
+dot -Tsvg graph.dot -o graph.svg
+```
 
 ### Semantic/hybrid prerequisites (local model files)
 
