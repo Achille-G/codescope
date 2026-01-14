@@ -181,14 +181,13 @@ impl ModelRegistry {
                 url,
                 &model_path,
                 info.model_sha256.as_deref(),
-                on_progress.as_mut().map(|f| {
-                    move |p: DownloadProgress| f("model.onnx", p)
-                }),
+                on_progress
+                    .as_mut()
+                    .map(|f| move |p: DownloadProgress| f("model.onnx", p)),
             )?;
         } else {
             return Err(crate::Error::Download(format!(
-                "No download URL for model {}",
-                id
+                "No download URL for model {id}"
             )));
         }
 
@@ -200,14 +199,13 @@ impl ModelRegistry {
                 url,
                 &tokenizer_path,
                 info.tokenizer_sha256.as_deref(),
-                on_progress.as_mut().map(|f| {
-                    move |p: DownloadProgress| f("tokenizer.json", p)
-                }),
+                on_progress
+                    .as_mut()
+                    .map(|f| move |p: DownloadProgress| f("tokenizer.json", p)),
             )?;
         } else {
             return Err(crate::Error::Download(format!(
-                "No download URL for tokenizer {}",
-                id
+                "No download URL for tokenizer {id}"
             )));
         }
 

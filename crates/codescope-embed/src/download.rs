@@ -165,7 +165,13 @@ where
         match download_file(url, dest, expected_sha256, on_progress.clone()) {
             Ok(()) => return Ok(()),
             Err(e) => {
-                warn!("Download failed from {} (attempt {}/{}): {}", url, i + 1, urls.len(), e);
+                warn!(
+                    "Download failed from {} (attempt {}/{}): {}",
+                    url,
+                    i + 1,
+                    urls.len(),
+                    e
+                );
                 last_error = Some(e);
             }
         }
