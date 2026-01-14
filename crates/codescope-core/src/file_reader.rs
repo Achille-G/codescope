@@ -1,7 +1,7 @@
 //! Concurrent file reading and parsing pipeline
 
 use crate::{Config, FileEntry, Profile};
-use codescope_parser::{Chunk, Language, Parser};
+use codescope_parser::{Chunk, Import, Language, Parser};
 use crossbeam_channel::{bounded, Receiver};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -94,6 +94,7 @@ pub struct ParsedFile {
     pub size: u64,
     pub was_lossy: bool,
     pub chunks: Vec<Chunk>,
+    pub imports: Vec<Import>,
 }
 
 /// Reasons a file can be skipped
@@ -321,13 +322,14 @@ fn parse_entry(parser: &Parser, content: FileContent) -> FileParseOutcome {
         }
     };
 
-    match parser.parse(&content.content, language) {
-        Ok(chunks) => FileParseOutcome::Parsed(ParsedFile {
+    match parser.parse_with_imports(&content.content, language) {
+        Ok((chunks, imports)) => FileParseOutcome::Parsed(ParsedFile {
             path: content.path,
             language,
             size: content.size,
             was_lossy: content.was_lossy,
             chunks,
+            imports,
         }),
         Err(err) => FileParseOutcome::Failed(FileParseError {
             path: content.path,
