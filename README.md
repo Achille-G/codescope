@@ -17,6 +17,7 @@ Fast, offline, multi-OS CLI tool for structural and semantic code search. Built 
 - **Hybrid Search**: Combines BM25 lexical search with vector semantic search using RRF fusion
 - **Offline First**: No cloud dependencies, all processing happens locally
 - **Multi-Language**: Tree-sitter parsing for 10+ languages (TypeScript, Python, Rust, Go, Java, etc.)
+- **Call Graph Tracing**: Find callers/callees and export call graphs (Graphviz DOT)
 - **AI-Optimized**: JSONL output by default for easy agent consumption
 - **Fast Indexing**: Incremental updates with change detection
 - **Cross-Platform**: Windows, macOS, and Linux support
@@ -62,6 +63,11 @@ codescope search "authentication middleware"
 
 # Search with options
 codescope search "error handling" -n 20 --pretty --type lexical
+
+# Trace call graph (best-effort)
+codescope trace callers "processOrder"
+codescope trace callees "processOrder" --pretty
+codescope trace graph "processOrder" --depth 3 --format dot > graph.dot
 ```
 
 ## Commands
@@ -71,11 +77,14 @@ codescope search "error handling" -n 20 --pretty --type lexical
 | `init` | Initialize codescope in the current directory |
 | `index` | Index the codebase (incremental by default) |
 | `search` | Search the codebase |
+| `trace` | Trace call graph relationships (callers, callees, graph) |
 | `status` | Show project status and index stats |
 | `clean` | Remove index data |
 | `agent-setup` | Configure AI agents to use codescope |
 
 For a full CLI reference (flags, exit codes, examples, model setup), see [docs/cli.md](docs/cli.md).
+
+Tip: every subcommand has its own help output (e.g., `codescope trace graph --help`).
 
 ### Search Types
 
