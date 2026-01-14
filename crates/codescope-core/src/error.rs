@@ -36,6 +36,9 @@ pub enum Error {
 
     #[error("Search error: {0}")]
     Search(#[from] codescope_search::Error),
+
+    #[error("Call graph error: {0}")]
+    CallGraph(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

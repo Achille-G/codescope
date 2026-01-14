@@ -8,6 +8,7 @@
 //! - File discovery and walking
 //! - Change detection for incremental indexing
 
+pub mod call_graph;
 pub mod change_detector;
 pub mod config;
 pub mod embedding;
@@ -18,9 +19,10 @@ pub mod profile;
 pub mod project;
 pub mod walker;
 
+pub use call_graph::CallGraph;
 pub use change_detector::{ChangeDetector, Changes, FileState};
-pub use config::Config;
 pub use codescope_embed::DownloadProgress;
+pub use config::Config;
 pub use embedding::{
     build_embedding_pipeline, ensure_model_downloaded, is_model_downloaded, resolve_embedding,
     ResolvedEmbedding,
