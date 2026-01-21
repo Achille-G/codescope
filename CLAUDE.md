@@ -31,6 +31,9 @@ cargo run -- <command>
 cargo run -- init
 cargo run -- index
 cargo run -- search "query"
+cargo run -- trace callers "symbol"
+cargo run -- trace callees "symbol"
+cargo run -- trace graph "symbol"
 cargo run -- status
 cargo run -- clean
 ```
@@ -42,8 +45,8 @@ codescope/
 ├── crates/
 │   ├── codescope-cli/      # Binary - clap CLI
 │   ├── codescope-core/     # Config, profiles, project management
-│   ├── codescope-parser/   # Tree-sitter parsing and chunking
-│   ├── codescope-embed/    # ONNX embeddings (modular Embedder trait)
+│   ├── codescope-parser/   # Tree-sitter parsing, chunking, call site extraction
+│   ├── codescope-embed/    # ONNX embeddings (modular Embedder trait) + model download
 │   └── codescope-search/   # Tantivy BM25 + HNSW ANN + RRF fusion
 ├── docs/plan/              # Implementation plan with epics and tickets
 └── .codescope/             # Per-project index (gitignored)
@@ -56,13 +59,16 @@ codescope/
 3. **RRF Fusion**: Reciprocal Rank Fusion combines BM25 + ANN results
 4. **Tombstones**: HNSW deletions use tombstone pattern + periodic compaction
 5. **Grammars**: Tree-sitter grammars compiled into binary (no runtime download)
+6. **Auto-download**: Models downloaded on first `index` with progress bar + SHA256 verification
 
 ## Current Status
 
 See `docs/plan/README.md` for full epic breakdown. Summary:
 
-- Epic 1 (Scaffolding): ✅ Mostly done
-- Epic 2-9: 🔄 Skeleton in place, needs implementation
+- Epic 1-9: Done (scaffolding, file walking, parsing, storage, embedding, search, CLI, perf, distribution)
+- Epic 15: Done (token optimization)
+- Epic 16: Done (call graph tracing)
+- Epic 10-14: Pending (daemon, text docs, OCR, external providers, postgres)
 
 ## Crate Dependencies
 
@@ -81,9 +87,22 @@ Each crate has its own `Error` enum via thiserror, with `Result<T>` alias.
 ### Project Layout
 `.codescope/` directory per project containing:
 - `config.toml` - project config
-- `meta.sqlite` - file/chunk metadata
+- `meta.sqlite` - file/chunk metadata + call graph tables
 - `hnsw.index` - vector index
 - `tantivy/` - BM25 index
+
+### Call Graph (Epic 16)
+- **Call sites**: Extracted from AST via Tree-sitter (`@crates/codescope-parser/src/call_graph/`)
+- **Storage**: `call_sites` and `imports` tables in meta.sqlite
+- **Resolution**: Best-effort cross-file resolution following imports
+- **CLI**: `trace callers`, `trace callees`, `trace graph` commands
+- **Output**: JSONL (default) or DOT (Graphviz) for graph visualization
+
+### Model Download (Epic 9)
+- **Location**: `~/.codescope/models/<model_id>/`
+- **Files**: `model.onnx` (~448MB) + `tokenizer.json`
+- **Auto-download**: Triggered on first `codescope index` with progress bar
+- **Registry**: `@crates/codescope-embed/src/registry.rs` defines model URLs and checksums
 
 ## Testing
 
@@ -96,6 +115,9 @@ cargo test -- --nocapture
 
 # Run specific test
 cargo test test_bm25_basic
+
+# Run call graph tests
+cargo test -p codescope-parser call_graph
 ```
 
 ## Git Workflow
@@ -106,3 +128,8 @@ When implementing epics or multi-ticket features:
 2. Create a branch from `dev` (e.g., `feat/epic-9-distribution`)
 3. One commit per ticket
 4. Use subagents or skills if needed for complex tasks
+
+## Platform Limitations
+
+- **CRITICAL**: No prebuilt ONNX Runtime for Intel Mac (x86_64-apple-darwin) or Linux ARM64
+- Release builds target: Linux x64, macOS ARM64, Windows x64 only
