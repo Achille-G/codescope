@@ -34,6 +34,37 @@ Download the latest binary for your platform from the [Releases page](https://gi
 | macOS ARM64 | `codescope-aarch64-apple-darwin.tar.gz` |
 | Windows x86_64 | `codescope-x86_64-pc-windows-msvc.zip` |
 
+#### Linux / macOS
+
+```bash
+# Download and extract (replace <version> and <platform>)
+curl -LO https://github.com/Achille-G/codescope/releases/latest/download/codescope-<platform>.tar.gz
+tar -xzf codescope-<platform>.tar.gz
+
+# Move to a directory in your PATH
+sudo mv codescope /usr/local/bin/
+
+# Or add to your local bin (no sudo required)
+mkdir -p ~/.local/bin
+mv codescope ~/.local/bin/
+# Add to PATH if not already: export PATH="$HOME/.local/bin:$PATH"
+
+# Verify installation
+codescope --version
+```
+
+#### Windows
+
+1. Download `codescope-x86_64-pc-windows-msvc.zip` from the [Releases page](https://github.com/Achille-G/codescope/releases)
+2. Extract the ZIP file
+3. Either:
+   - **Option A**: Move `codescope.exe` to a folder already in your PATH (e.g., `C:\Windows\System32`)
+   - **Option B**: Add the extraction folder to your PATH:
+     - Open Settings > System > About > Advanced system settings
+     - Click "Environment Variables"
+     - Edit `Path` and add the folder containing `codescope.exe`
+4. Open a new terminal and verify: `codescope --version`
+
 ### From Source
 
 ```bash
