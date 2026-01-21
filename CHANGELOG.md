@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-01-21
+
+### Added
+
+#### Call Graph Tracing (Epic 16)
+- **`codescope trace callers <symbol>`** - Find all functions that call a given symbol
+- **`codescope trace callees <symbol>`** - Find all functions called by a given symbol
+- **`codescope trace graph <symbol>`** - Generate complete call graph from a symbol
+- Call site extraction from AST using Tree-sitter
+- Import resolution across files (follows imports to resolve full paths)
+- Output formats: JSONL (default) and DOT (Graphviz) with `--format dot`
+- `--depth <N>` flag to control traversal depth (default: unlimited)
+- SQLite storage for call graph metadata
+
+#### Model Distribution (Epic 9)
+- Automatic model download on first `codescope index` with progress bar
+- SHA256 checksum verification for downloaded models
+- Clear error messages for network/download issues
+- Documented platform limitations (no prebuilt ONNX for Intel Mac, Linux ARM64)
+
+### Changed
+- Improved README with trace command documentation
+- Updated CLI reference docs
+
+### Fixed
+- Fixed clippy warnings in embed crate
+
 ## [0.1.0] - 2025-01-11
 
 First production release of codescope - a fast, offline, multi-OS CLI tool for structural and semantic code search.
@@ -49,4 +76,5 @@ First production release of codescope - a fast, offline, multi-OS CLI tool for s
 - Cross-platform support (Windows, macOS, Linux)
 - Rust 1.85+ required
 
+[0.2.0]: https://github.com/Achille-G/codescope/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Achille-G/codescope/releases/tag/v0.1.0
