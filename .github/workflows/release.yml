@@ -25,6 +25,8 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: codescope.exe
+          # Note: Linux ARM64 (aarch64-unknown-linux-gnu) requires native ARM64 runner
+          # or complex ONNX Runtime cross-compilation. Users on ARM64 Linux can build from source.
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

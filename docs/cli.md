@@ -7,6 +7,17 @@
 - `-v, --verbose`: more logs (debug for codescope crates)
 - `-q, --quiet`: errors only
 
+## Help
+
+Every subcommand has its own help output (you can drill down as deep as you want):
+
+```bash
+codescope --help
+codescope search --help
+codescope trace --help
+codescope trace callees --help
+```
+
 ## `codescope init`
 
 Initializes `.codescope/` in the current directory:
@@ -69,18 +80,61 @@ Options:
 - `-n, --top <N>`: number of results (default: 10)
 - `--pretty`: human-readable output (default is JSONL)
 
+### Token optimization flags (for AI agents)
+
+- `--compact`: output file paths and line ranges only (no code snippets)
+- `--excerpt-lines <N>`: limit snippet output to N lines (default: full chunk)
+- `--dedupe <true|false>`: deduplicate overlapping chunks (default: true)
+- `--no-dedupe`: disable overlap deduplication (for debugging)
+
 Examples:
 
 ```bash
 codescope search "authentication middleware" --type lexical
 codescope search "error handling" --type hybrid -n 20 --pretty
 codescope search "vector database" --type semantic -n 5
+
+# Token-efficient search for AI agents
+codescope search "auth" --compact
+codescope search "middleware" --excerpt-lines 5
+codescope search "config" --no-dedupe
 ```
 
 Exit codes:
 - `0`: results printed
 - `2`: no results
 - `>0`: error (project not initialized, missing model files, etc.)
+
+## `codescope trace`
+
+Traces call graph relationships from the indexed metadata (best-effort cross-file resolution).
+
+Subcommands:
+- `codescope trace callers <SYMBOL> [--file <PATH>] [--pretty] [--compact]`
+- `codescope trace callees <SYMBOL> [--file <PATH>] [--pretty] [--compact]`
+- `codescope trace graph <SYMBOL> [--file <PATH>] [--depth <N>] [--format <jsonl|dot>] [--pretty] [--compact]`
+
+Examples:
+
+```bash
+codescope trace callers "processOrder"
+codescope trace callers "processOrder" --pretty
+codescope trace callees "processOrder" --file src/order.ts
+codescope trace graph "processOrder" --depth 3
+codescope trace graph "processOrder" --depth 3 --pretty
+codescope trace graph "processOrder" --format dot > graph.dot
+```
+
+Outputs:
+- JSONL (default) for callers/callees/graph
+- Graphviz DOT for `trace graph --format dot`
+- `trace callees --pretty` prints a best-effort target label (`file:line`, or `project|builtin|stdlib|external|unresolved`)
+
+Viewing DOT graphs (Graphviz):
+
+```bash
+dot -Tsvg graph.dot -o graph.svg
+```
 
 ### Semantic/hybrid prerequisites (local model files)
 
@@ -131,6 +185,18 @@ Examples:
 codescope clean
 codescope clean --yes
 ```
+
+## `codescope agent-setup`
+
+Outputs instructions for configuring AI agents (Claude, GPT, etc.) to use codescope effectively.
+
+Example:
+
+```bash
+codescope agent-setup
+```
+
+This prints recommended CLAUDE.md / system prompt snippets with token-efficient search patterns.
 
 ## Inspecting `.codescope/meta.sqlite`
 

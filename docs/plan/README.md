@@ -20,7 +20,7 @@ This folder contains the structured implementation plan with epics and tickets.
 | [Epic 6](./epic-06-search.md)       | 🟢 Done    | Search Engine                             |
 | [Epic 7](./epic-07-cli.md)          | 🟢 Done    | CLI Interface                             |
 | [Epic 8](./epic-08-perf.md)         | 🟢 Done    | Performance & Testing                     |
-| [Epic 9](./epic-09-distribution.md) | ⚪ Pending | Asset Distribution                        |
+| [Epic 9](./epic-09-distribution.md) | 🟢 Done    | Asset Distribution                        |
 | [Epic 10](./epic-10-daemon.md)      | ⚪ Pending | Watch/Daemon (Continuous Indexing)        |
 | [Epic 11](./epic-11-text-docs.md)   | ⚪ Pending | Text Documents (Beyond Code)              |
 | [Epic 12](./epic-12-ocr-and-binary-docs.md) | ⚪ Pending | PDF/Image Ingestion (Extraction + OCR) |

@@ -17,11 +17,22 @@ Fast, offline, multi-OS CLI tool for structural and semantic code search. Built 
 - **Hybrid Search**: Combines BM25 lexical search with vector semantic search using RRF fusion
 - **Offline First**: No cloud dependencies, all processing happens locally
 - **Multi-Language**: Tree-sitter parsing for 10+ languages (TypeScript, Python, Rust, Go, Java, etc.)
+- **Call Graph Tracing**: Find callers/callees and export call graphs (Graphviz DOT)
 - **AI-Optimized**: JSONL output by default for easy agent consumption
 - **Fast Indexing**: Incremental updates with change detection
 - **Cross-Platform**: Windows, macOS, and Linux support
 
 ## Installation
+
+### From Releases (recommended)
+
+Download the latest binary for your platform from the [Releases page](https://github.com/Achille-G/codescope/releases):
+
+| Platform | Download |
+|----------|----------|
+| Linux x86_64 | `codescope-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS ARM64 | `codescope-aarch64-apple-darwin.tar.gz` |
+| Windows x86_64 | `codescope-x86_64-pc-windows-msvc.zip` |
 
 ### From Source
 
@@ -33,9 +44,9 @@ cargo build --release
 
 The binary will be at `target/release/codescope`.
 
-### Requirements
+### Requirements (building from source)
 
-- Rust 1.75+
+- Rust 1.85+
 - C/C++ compiler (for tree-sitter and dependencies)
 
 ## Quick Start
@@ -52,6 +63,11 @@ codescope search "authentication middleware"
 
 # Search with options
 codescope search "error handling" -n 20 --pretty --type lexical
+
+# Trace call graph (best-effort)
+codescope trace callers "processOrder"
+codescope trace callees "processOrder" --pretty
+codescope trace graph "processOrder" --depth 3 --format dot > graph.dot
 ```
 
 ## Commands
@@ -61,10 +77,14 @@ codescope search "error handling" -n 20 --pretty --type lexical
 | `init` | Initialize codescope in the current directory |
 | `index` | Index the codebase (incremental by default) |
 | `search` | Search the codebase |
+| `trace` | Trace call graph relationships (callers, callees, graph) |
 | `status` | Show project status and index stats |
 | `clean` | Remove index data |
+| `agent-setup` | Configure AI agents to use codescope |
 
-For a full CLI reference (flags, exit codes, examples, model setup), see `docs/cli.md`.
+For a full CLI reference (flags, exit codes, examples, model setup), see [docs/cli.md](docs/cli.md).
+
+Tip: every subcommand has its own help output (e.g., `codescope trace graph --help`).
 
 ### Search Types
 
@@ -92,6 +112,20 @@ Default output is JSONL for easy parsing:
 ```
 
 Use `--pretty` for human-readable output.
+
+### Token Optimization (for AI agents)
+
+Reduce token usage when feeding results to LLMs:
+
+```bash
+# Compact mode: file paths and line ranges only (no code)
+codescope search "auth" --compact
+
+# Limit snippet length
+codescope search "middleware" --excerpt-lines 5
+```
+
+Overlap deduplication is enabled by default. Disable with `--no-dedupe` for debugging.
 
 ## Architecture
 
