@@ -28,6 +28,7 @@ This folder contains the structured implementation plan with epics and tickets.
 | [Epic 14](./epic-14-postgres-pgvector.md) | ⚪ Pending | Postgres + pgvector Backend (Concurrent / Shared Index) |
 | [Epic 15](./epic-15-token-optimization.md) | 🟢 Done    | Token Optimization for AI Agents (Compact Mode, Deduplication) |
 | [Epic 16](./epic-16-call-graph.md) | 🟢 Done    | Call Graph Tracing (callers, callees, graph) |
+| [Epic 17](./epic-17-qdrant.md) | ⚪ Pending | Qdrant Backend (Shared Vector Index) |
 
 ## Implementation Phases
 

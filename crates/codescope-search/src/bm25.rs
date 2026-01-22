@@ -4,7 +4,7 @@ use crate::{Error, Result};
 use std::path::Path;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
-use tantivy::schema::{Field, Schema, Value, STORED, TEXT};
+use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, TEXT};
 use tantivy::{doc, Index, IndexReader, IndexWriter, TantivyDocument};
 
 /// BM25 search index using Tantivy
@@ -17,6 +17,7 @@ pub struct BM25Index {
     symbol_field: Field,
     kind_field: Field,
     file_field: Field,
+    chunk_id_indexed: bool,
 }
 
 impl BM25Index {
@@ -32,6 +33,7 @@ impl BM25Index {
             Index::create_in_dir(path, schema.clone())?
         };
 
+        let schema = index.schema();
         let reader = index.reader()?;
 
         let chunk_id_field = schema.get_field("chunk_id").unwrap();
@@ -39,6 +41,7 @@ impl BM25Index {
         let symbol_field = schema.get_field("symbol").unwrap();
         let kind_field = schema.get_field("kind").unwrap();
         let file_field = schema.get_field("file").unwrap();
+        let chunk_id_indexed = schema.get_field_entry(chunk_id_field).is_indexed();
 
         Ok(Self {
             index,
@@ -49,6 +52,7 @@ impl BM25Index {
             symbol_field,
             kind_field,
             file_field,
+            chunk_id_indexed,
         })
     }
 
@@ -57,6 +61,7 @@ impl BM25Index {
         let schema = Self::build_schema();
         let index = Index::create_in_ram(schema.clone());
 
+        let schema = index.schema();
         let reader = index.reader()?;
 
         let chunk_id_field = schema.get_field("chunk_id").unwrap();
@@ -64,6 +69,7 @@ impl BM25Index {
         let symbol_field = schema.get_field("symbol").unwrap();
         let kind_field = schema.get_field("kind").unwrap();
         let file_field = schema.get_field("file").unwrap();
+        let chunk_id_indexed = schema.get_field_entry(chunk_id_field).is_indexed();
 
         Ok(Self {
             index,
@@ -74,6 +80,7 @@ impl BM25Index {
             symbol_field,
             kind_field,
             file_field,
+            chunk_id_indexed,
         })
     }
 
@@ -81,7 +88,7 @@ impl BM25Index {
         let mut schema_builder = Schema::builder();
 
         // Chunk ID (stored for retrieval)
-        schema_builder.add_i64_field("chunk_id", STORED);
+        schema_builder.add_i64_field("chunk_id", STORED | INDEXED);
 
         // Content (full-text searchable)
         schema_builder.add_text_field("content", TEXT);
@@ -100,6 +107,12 @@ impl BM25Index {
 
     /// Begin a write session
     pub fn begin_write(&mut self, heap_size: usize) -> Result<()> {
+        if !self.chunk_id_indexed {
+            return Err(Error::Index(
+                "BM25 schema is outdated (chunk_id is not indexed). Run `codescope clean` then `codescope index --all` to rebuild."
+                    .to_string(),
+            ));
+        }
         if self.writer.is_none() {
             self.writer = Some(self.index.writer(heap_size)?);
         }

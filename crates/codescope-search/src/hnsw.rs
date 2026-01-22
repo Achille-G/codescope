@@ -71,10 +71,16 @@ impl HNSWIndex {
             .try_into()
             .map_err(|_| Error::Index(format!("Invalid chunk_id for index key: {chunk_id}")))?;
         self.tombstones.remove(&key);
+        reserve_capacity(&self.index, 1)?;
         if let Err(err) = <f32 as VectorType>::add(&self.index, key, &vector) {
             let message = err.to_string();
             if message.contains("Duplicate keys not allowed") {
                 let _ = self.index.remove(key);
+                reserve_capacity(&self.index, 1)?;
+                <f32 as VectorType>::add(&self.index, key, &vector)
+                    .map_err(|err| Error::Index(err.to_string()))?;
+            } else if message.contains("Reserve capacity ahead of insertions") {
+                reserve_capacity(&self.index, 1)?;
                 <f32 as VectorType>::add(&self.index, key, &vector)
                     .map_err(|err| Error::Index(err.to_string()))?;
             } else {
@@ -86,6 +92,7 @@ impl HNSWIndex {
 
     /// Add multiple vectors.
     pub fn add_batch(&mut self, items: Vec<(i64, Vec<f32>)>) -> Result<()> {
+        reserve_capacity(&self.index, items.len())?;
         for (chunk_id, vector) in items {
             self.add(chunk_id, vector)?;
         }
@@ -207,6 +214,8 @@ impl HNSWIndex {
                     .map_err(|err| Error::Index(err.to_string()))?;
             }
 
+            reserve_capacity(&index, DEFAULT_RESERVE)?;
+
             return Ok(Self {
                 dimensions: meta.options.dimensions,
                 index,
@@ -224,6 +233,28 @@ impl HNSWIndex {
             path.display()
         )))
     }
+}
+
+fn reserve_capacity(index: &Index, additional: usize) -> Result<()> {
+    let size = index.size();
+    let capacity = index.capacity();
+    let needed = size.saturating_add(additional);
+    if capacity >= needed && capacity > 0 {
+        return Ok(());
+    }
+
+    let mut new_capacity = capacity.max(DEFAULT_RESERVE);
+    while new_capacity < needed {
+        new_capacity = new_capacity
+            .saturating_mul(2)
+            .max(needed)
+            .max(DEFAULT_RESERVE);
+    }
+
+    index
+        .reserve(new_capacity)
+        .map_err(|err| Error::Index(err.to_string()))?;
+    Ok(())
 }
 
 struct HnswMeta {
