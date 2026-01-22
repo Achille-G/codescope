@@ -117,9 +117,12 @@ impl IndexService {
         })
     }
 
-    /// Check if embeddings are enabled.
-    pub fn embeddings_enabled(&self) -> bool {
-        self.embed_pipeline.is_some()
+    /// Disable semantic embeddings for this service instance.
+    pub fn disable_embeddings(&mut self) {
+        if self.embed_pipeline.is_some() {
+            info!("Semantic embeddings disabled for watch mode");
+        }
+        self.embed_pipeline = None;
     }
 
     /// Index the given files.

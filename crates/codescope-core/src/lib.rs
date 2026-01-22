@@ -37,4 +37,4 @@ pub use lock::{cleanup_stale_lock, ProjectLock};
 pub use memory::{estimates, MemoryBudget, MemoryGuard, MemoryTracker};
 pub use profile::Profile;
 pub use project::Project;
-pub use walker::{FileEntry, Walker, WalkerConfig};
+pub use walker::{FileEntry, PathFilter, Walker, WalkerConfig};

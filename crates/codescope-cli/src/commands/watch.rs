@@ -1,10 +1,11 @@
 //! `codescope watch` command - continuous indexing
 
 use anyhow::{Context, Result};
-use codescope_core::{cleanup_stale_lock, Project, ProjectLock};
+use codescope_core::{cleanup_stale_lock, PathFilter, Project, ProjectLock};
 use codescope_parser::Language;
 use indicatif::{ProgressBar, ProgressStyle};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::HashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -12,7 +13,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 
-use crate::commands::util::collect_indexable_files;
+use crate::commands::util::{
+    build_extension_set, build_walker_config, collect_indexable_files, extension_allowed,
+};
 use crate::services::{
     EventHandle, IndexProgress, IndexService, SchedulerConfig, WorkItem, WorkScheduler, WorkType,
 };
@@ -54,8 +57,8 @@ pub fn run(
 
     let mut index_service = IndexService::new(project.clone())?;
 
-    if no_semantic && index_service.embeddings_enabled() {
-        info!("Semantic search disabled by --no-semantic flag");
+    if no_semantic {
+        index_service.disable_embeddings();
     }
 
     // Do initial scan
@@ -110,7 +113,17 @@ pub fn run(
     let project_root = project.root().to_path_buf();
     let codescope_dir = project.codescope_dir();
 
-    let mut watcher = create_watcher(watcher_handle, project_root.clone(), codescope_dir.clone())?;
+    let walker_config = build_walker_config(&project);
+    let path_filter = Arc::new(PathFilter::new(project_root.clone(), walker_config)?);
+    let allowed_extensions =
+        build_extension_set(&project.config().indexing.include_extensions).map(Arc::new);
+
+    let mut watcher = create_watcher(
+        watcher_handle,
+        codescope_dir.clone(),
+        Arc::clone(&path_filter),
+        allowed_extensions.clone(),
+    )?;
 
     // Watch the project root recursively
     watcher
@@ -205,13 +218,20 @@ pub fn run(
 
 fn create_watcher(
     event_handle: EventHandle,
-    project_root: PathBuf,
     codescope_dir: PathBuf,
+    path_filter: Arc<PathFilter>,
+    allowed_extensions: Option<Arc<HashSet<String>>>,
 ) -> Result<RecommendedWatcher> {
     let watcher = RecommendedWatcher::new(
         move |result: Result<Event, notify::Error>| match result {
             Ok(event) => {
-                handle_fs_event(&event_handle, &event, &project_root, &codescope_dir);
+                handle_fs_event(
+                    &event_handle,
+                    &event,
+                    &codescope_dir,
+                    &path_filter,
+                    allowed_extensions.as_deref(),
+                );
             }
             Err(e) => {
                 warn!("Watch error: {e}");
@@ -224,7 +244,13 @@ fn create_watcher(
     Ok(watcher)
 }
 
-fn handle_fs_event(handle: &EventHandle, event: &Event, project_root: &Path, codescope_dir: &Path) {
+fn handle_fs_event(
+    handle: &EventHandle,
+    event: &Event,
+    codescope_dir: &Path,
+    path_filter: &PathFilter,
+    allowed_extensions: Option<&HashSet<String>>,
+) {
     use notify::EventKind;
 
     // Filter out events from .codescope directory
@@ -255,8 +281,14 @@ fn handle_fs_event(handle: &EventHandle, event: &Event, project_root: &Path, cod
             continue;
         }
 
+        if let Some(allowed) = allowed_extensions {
+            if !extension_allowed(path, allowed) {
+                continue;
+            }
+        }
+
         // Check if file should be ignored
-        if should_ignore_path(path, project_root) {
+        if path_filter.is_ignored(path) {
             continue;
         }
 
@@ -299,63 +331,6 @@ fn make_progress_callback() -> Box<dyn Fn(&IndexProgress) + Send + Sync> {
             println!("Resolving call sites for {total} files...");
         }
     })
-}
-
-fn should_ignore_path(path: &Path, project_root: &Path) -> bool {
-    let rel_path = path
-        .strip_prefix(project_root)
-        .unwrap_or(path)
-        .to_string_lossy();
-
-    // Default exclusions
-    let exclusions = [
-        ".git/",
-        "node_modules/",
-        "target/",
-        "dist/",
-        "build/",
-        ".next/",
-        ".nuxt/",
-        "vendor/",
-        ".venv/",
-        "venv/",
-        "__pycache__/",
-        ".mypy_cache/",
-        ".pytest_cache/",
-        ".tox/",
-        ".eggs/",
-        ".cargo/",
-        ".rustup/",
-        "coverage/",
-        ".nyc_output/",
-    ];
-
-    for exclusion in exclusions {
-        if rel_path.contains(exclusion) {
-            return true;
-        }
-    }
-
-    // Skip common non-code files
-    let file_exclusions = [
-        ".min.js",
-        ".min.css",
-        ".map",
-        ".lock",
-        "package-lock.json",
-        "yarn.lock",
-        "pnpm-lock.yaml",
-        "Cargo.lock",
-    ];
-
-    let path_str = path.to_string_lossy();
-    for exclusion in file_exclusions {
-        if path_str.ends_with(exclusion) {
-            return true;
-        }
-    }
-
-    false
 }
 
 fn process_batch(
