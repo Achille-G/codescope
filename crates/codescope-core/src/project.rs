@@ -14,7 +14,7 @@ const TANTIVY_DIR: &str = "tantivy";
 const LOCK_FILE: &str = ".lock";
 
 /// Represents an initialized codescope project
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Project {
     /// Root directory of the project (where .codescope/ lives)
     root: PathBuf,
