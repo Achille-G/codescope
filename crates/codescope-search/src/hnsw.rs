@@ -70,8 +70,17 @@ impl HNSWIndex {
         let key = chunk_id
             .try_into()
             .map_err(|_| Error::Index(format!("Invalid chunk_id for index key: {chunk_id}")))?;
-        <f32 as VectorType>::add(&self.index, key, &vector)
-            .map_err(|err| Error::Index(err.to_string()))?;
+        self.tombstones.remove(&key);
+        if let Err(err) = <f32 as VectorType>::add(&self.index, key, &vector) {
+            let message = err.to_string();
+            if message.contains("Duplicate keys not allowed") {
+                let _ = self.index.remove(key);
+                <f32 as VectorType>::add(&self.index, key, &vector)
+                    .map_err(|err| Error::Index(err.to_string()))?;
+            } else {
+                return Err(Error::Index(message));
+            }
+        }
         Ok(())
     }
 
@@ -439,6 +448,19 @@ mod tests {
         let results = index.search(&[1.0, 0.0], 10).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].0, 2);
+    }
+
+    #[test]
+    fn test_hnsw_readd_after_tombstone() {
+        let mut index = HNSWIndex::with_defaults(2).unwrap();
+        index.add(1, vec![1.0, 0.0]).unwrap();
+        index.mark_deleted(1);
+        index.add(1, vec![0.0, 1.0]).unwrap();
+
+        assert_eq!(index.tombstone_count(), 0);
+
+        let results = index.search(&[0.0, 1.0], 1).unwrap();
+        assert_eq!(results[0].0, 1);
     }
 
     #[test]
