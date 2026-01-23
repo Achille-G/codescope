@@ -1,7 +1,7 @@
 //! `codescope status` command
 
 use anyhow::{Context, Result};
-use codescope_core::Project;
+use codescope_core::{Project, ProjectLock};
 use codescope_search::{BM25Index, HNSWIndex, Storage};
 use std::env;
 
@@ -16,6 +16,18 @@ pub fn run() -> Result<()> {
     println!();
     println!("Root:    {}", project.root().display());
     println!("Profile: {}", project.config().profile);
+
+    // Check if watch/daemon is running
+    let lock_path = project.lock_file_path();
+    let watch_status = if ProjectLock::is_locked(&lock_path) {
+        let pid = ProjectLock::read_holder_pid(&lock_path)
+            .map(|p| format!(" (PID {p})"))
+            .unwrap_or_default();
+        format!("running{pid}")
+    } else {
+        "not running".to_string()
+    };
+    println!("Watch:   {watch_status}");
     println!();
     println!("Index:");
     println!("  Database: {}", project.meta_db_path().display());

@@ -14,7 +14,13 @@ pub enum Error {
     Config(String),
 
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(String),
+
+    #[error("IO error: {0}")]
+    IoStd(#[from] std::io::Error),
+
+    #[error("Lock held: {0}")]
+    LockHeld(String),
 
     #[error("TOML parse error: {0}")]
     TomlParse(#[from] toml::de::Error),

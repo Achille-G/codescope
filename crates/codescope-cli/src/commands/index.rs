@@ -2,8 +2,9 @@
 
 use anyhow::{Context, Result};
 use codescope_core::{
-    ensure_model_downloaded, is_model_downloaded, ChangeDetector, DownloadProgress,
-    FileParseConfig, FileParseOutcome, FileParser, FileReadConfig, FileReader, Project,
+    cleanup_stale_lock, ensure_model_downloaded, is_model_downloaded, ChangeDetector,
+    DownloadProgress, FileParseConfig, FileParseOutcome, FileParser, FileReadConfig, FileReader,
+    Project, ProjectLock,
 };
 use codescope_search::{BM25Index, HNSWIndex, Storage};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -22,6 +23,17 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
 
     let project = Project::find(&current_dir)
         .context("Not in a codescope project. Run 'codescope init' first.")?;
+
+    let lock_path = project.lock_file_path();
+    cleanup_stale_lock(&lock_path);
+
+    let _lock = ProjectLock::try_acquire(&lock_path).map_err(|e| {
+        anyhow::anyhow!(
+            "{}\n\nHint: If no other codescope process is running, delete {} and retry.",
+            e,
+            lock_path.display()
+        )
+    })?;
 
     let start = Instant::now();
 

@@ -20,6 +20,7 @@ Fast, offline, multi-OS CLI tool for structural and semantic code search. Built 
 - **Call Graph Tracing**: Find callers/callees and export call graphs (Graphviz DOT)
 - **AI-Optimized**: JSONL output by default for easy agent consumption
 - **Fast Indexing**: Incremental updates with change detection
+- **Continuous Indexing**: `watch` and `daemon` keep indexes fresh while you code
 - **Cross-Platform**: Windows, macOS, and Linux support
 
 ## Installation
@@ -92,6 +93,9 @@ codescope index
 # Search
 codescope search "authentication middleware"
 
+# Watch (continuous indexing)
+codescope watch --debounce-ms 300
+
 # Search with options
 codescope search "error handling" -n 20 --pretty --type lexical
 
@@ -109,6 +113,8 @@ codescope trace graph "processOrder" --depth 3 --format dot > graph.dot
 | `index` | Index the codebase (incremental by default) |
 | `search` | Search the codebase |
 | `trace` | Trace call graph relationships (callers, callees, graph) |
+| `watch` | Continuously update the index on file changes |
+| `daemon` | Manage a background watch process (start/stop/status) |
 | `status` | Show project status and index stats |
 | `clean` | Remove index data |
 | `agent-setup` | Configure AI agents to use codescope |
@@ -179,6 +185,14 @@ Each project stores its index in `.codescope/`:
 - `meta.sqlite` - File and chunk metadata
 - `hnsw.index` - Vector index for semantic search
 - `tantivy/` - BM25 inverted index
+
+### Watch mode
+
+`codescope watch` keeps the index fresh while you work:
+- runs an initial scan, then watches for file changes
+- debounces event storms and periodically rescans for safety
+- respects `.gitignore`, `.codescopeignore`, and config ignore patterns
+- `--no-semantic` skips embeddings (faster, less RAM)
 
 ## Supported Languages
 

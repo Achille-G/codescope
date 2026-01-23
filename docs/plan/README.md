@@ -21,13 +21,14 @@ This folder contains the structured implementation plan with epics and tickets.
 | [Epic 7](./epic-07-cli.md)          | 🟢 Done    | CLI Interface                             |
 | [Epic 8](./epic-08-perf.md)         | 🟢 Done    | Performance & Testing                     |
 | [Epic 9](./epic-09-distribution.md) | 🟢 Done    | Asset Distribution                        |
-| [Epic 10](./epic-10-daemon.md)      | ⚪ Pending | Watch/Daemon (Continuous Indexing)        |
+| [Epic 10](./epic-10-daemon.md)      | 🟢 Done    | Watch/Daemon (Continuous Indexing)        |
 | [Epic 11](./epic-11-text-docs.md)   | ⚪ Pending | Text Documents (Beyond Code)              |
 | [Epic 12](./epic-12-ocr-and-binary-docs.md) | ⚪ Pending | PDF/Image Ingestion (Extraction + OCR) |
 | [Epic 13](./epic-13-external-embedding-providers.md) | ⚪ Pending | External Embedding Providers (Optional) |
 | [Epic 14](./epic-14-postgres-pgvector.md) | ⚪ Pending | Postgres + pgvector Backend (Concurrent / Shared Index) |
 | [Epic 15](./epic-15-token-optimization.md) | 🟢 Done    | Token Optimization for AI Agents (Compact Mode, Deduplication) |
 | [Epic 16](./epic-16-call-graph.md) | 🟢 Done    | Call Graph Tracing (callers, callees, graph) |
+| [Epic 17](./epic-17-qdrant.md) | ⚪ Pending | Qdrant Backend (Shared Vector Index) |
 
 ## Implementation Phases
 

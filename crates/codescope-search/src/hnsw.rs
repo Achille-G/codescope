@@ -70,13 +70,29 @@ impl HNSWIndex {
         let key = chunk_id
             .try_into()
             .map_err(|_| Error::Index(format!("Invalid chunk_id for index key: {chunk_id}")))?;
-        <f32 as VectorType>::add(&self.index, key, &vector)
-            .map_err(|err| Error::Index(err.to_string()))?;
+        self.tombstones.remove(&key);
+        reserve_capacity(&self.index, 1)?;
+        if let Err(err) = <f32 as VectorType>::add(&self.index, key, &vector) {
+            let message = err.to_string();
+            if message.contains("Duplicate keys not allowed") {
+                let _ = self.index.remove(key);
+                reserve_capacity(&self.index, 1)?;
+                <f32 as VectorType>::add(&self.index, key, &vector)
+                    .map_err(|err| Error::Index(err.to_string()))?;
+            } else if message.contains("Reserve capacity ahead of insertions") {
+                reserve_capacity(&self.index, 1)?;
+                <f32 as VectorType>::add(&self.index, key, &vector)
+                    .map_err(|err| Error::Index(err.to_string()))?;
+            } else {
+                return Err(Error::Index(message));
+            }
+        }
         Ok(())
     }
 
     /// Add multiple vectors.
     pub fn add_batch(&mut self, items: Vec<(i64, Vec<f32>)>) -> Result<()> {
+        reserve_capacity(&self.index, items.len())?;
         for (chunk_id, vector) in items {
             self.add(chunk_id, vector)?;
         }
@@ -198,6 +214,8 @@ impl HNSWIndex {
                     .map_err(|err| Error::Index(err.to_string()))?;
             }
 
+            reserve_capacity(&index, DEFAULT_RESERVE)?;
+
             return Ok(Self {
                 dimensions: meta.options.dimensions,
                 index,
@@ -215,6 +233,28 @@ impl HNSWIndex {
             path.display()
         )))
     }
+}
+
+fn reserve_capacity(index: &Index, additional: usize) -> Result<()> {
+    let size = index.size();
+    let capacity = index.capacity();
+    let needed = size.saturating_add(additional);
+    if capacity >= needed && capacity > 0 {
+        return Ok(());
+    }
+
+    let mut new_capacity = capacity.max(DEFAULT_RESERVE);
+    while new_capacity < needed {
+        new_capacity = new_capacity
+            .saturating_mul(2)
+            .max(needed)
+            .max(DEFAULT_RESERVE);
+    }
+
+    index
+        .reserve(new_capacity)
+        .map_err(|err| Error::Index(err.to_string()))?;
+    Ok(())
 }
 
 struct HnswMeta {
@@ -439,6 +479,19 @@ mod tests {
         let results = index.search(&[1.0, 0.0], 10).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].0, 2);
+    }
+
+    #[test]
+    fn test_hnsw_readd_after_tombstone() {
+        let mut index = HNSWIndex::with_defaults(2).unwrap();
+        index.add(1, vec![1.0, 0.0]).unwrap();
+        index.mark_deleted(1);
+        index.add(1, vec![0.0, 1.0]).unwrap();
+
+        assert_eq!(index.tombstone_count(), 0);
+
+        let results = index.search(&[0.0, 1.0], 1).unwrap();
+        assert_eq!(results[0].0, 1);
     }
 
     #[test]

@@ -2,8 +2,9 @@
 
 use crate::{Error, Result};
 use codescope_parser::Language;
+use ignore::gitignore::GitignoreBuilder;
 use ignore::overrides::OverrideBuilder;
-use ignore::WalkBuilder;
+use ignore::{Match, WalkBuilder};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
@@ -54,6 +55,39 @@ const DEFAULT_FILE_EXCLUSIONS: &[&str] = &[
     "!*.pyc",
     "!*.pyo",
 ];
+
+fn build_overrides(root: &Path, config: &WalkerConfig) -> Result<ignore::overrides::Override> {
+    let mut overrides = OverrideBuilder::new(root);
+
+    for pattern in DEFAULT_EXCLUSIONS {
+        overrides
+            .add(pattern)
+            .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
+    }
+
+    for pattern in DEFAULT_FILE_EXCLUSIONS {
+        overrides
+            .add(pattern)
+            .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
+    }
+
+    for pattern in &config.exclude_patterns {
+        let negated = format!("!{}", pattern.trim_start_matches('!'));
+        overrides
+            .add(&negated)
+            .map_err(|e| Error::Config(format!("Invalid exclude pattern '{pattern}': {e}")))?;
+    }
+
+    for pattern in &config.include_patterns {
+        overrides
+            .add(pattern)
+            .map_err(|e| Error::Config(format!("Invalid include pattern '{pattern}': {e}")))?;
+    }
+
+    overrides
+        .build()
+        .map_err(|e| Error::Config(format!("Failed to build overrides: {e}")))
+}
 
 /// Configuration for the file walker
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,41 +197,7 @@ impl Walker {
         }
 
         // Build overrides for default exclusions and custom patterns
-        let mut overrides = OverrideBuilder::new(&self.root);
-
-        // Add default directory exclusions
-        for pattern in DEFAULT_EXCLUSIONS {
-            overrides
-                .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
-        }
-
-        // Add default file exclusions
-        for pattern in DEFAULT_FILE_EXCLUSIONS {
-            overrides
-                .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid exclusion pattern: {e}")))?;
-        }
-
-        // Add custom exclude patterns
-        for pattern in &self.config.exclude_patterns {
-            let negated = format!("!{}", pattern.trim_start_matches('!'));
-            overrides
-                .add(&negated)
-                .map_err(|e| Error::Config(format!("Invalid exclude pattern '{pattern}': {e}")))?;
-        }
-
-        // Add custom include patterns
-        for pattern in &self.config.include_patterns {
-            overrides
-                .add(pattern)
-                .map_err(|e| Error::Config(format!("Invalid include pattern '{pattern}': {e}")))?;
-        }
-
-        let overrides = overrides
-            .build()
-            .map_err(|e| Error::Config(format!("Failed to build overrides: {e}")))?;
-
+        let overrides = build_overrides(&self.root, &self.config)?;
         builder.overrides(overrides);
 
         // Collect files
@@ -254,6 +254,89 @@ impl Walker {
         debug!("Found {} files with supported languages", supported.len());
         Ok(supported)
     }
+}
+
+/// Path filter that mirrors Walker's ignore behavior for single paths.
+#[derive(Debug)]
+pub struct PathFilter {
+    root: PathBuf,
+    overrides: ignore::overrides::Override,
+    gitignore: ignore::gitignore::Gitignore,
+    include_hidden: bool,
+}
+
+impl PathFilter {
+    /// Create a new path filter for the given root and configuration.
+    pub fn new(root: PathBuf, config: WalkerConfig) -> Result<Self> {
+        let overrides = build_overrides(&root, &config)?;
+
+        let mut gitignore_builder = GitignoreBuilder::new(&root);
+        if config.respect_gitignore || config.respect_codescopeignore {
+            let mut builder = WalkBuilder::new(&root);
+            builder
+                .hidden(false)
+                .follow_links(config.follow_symlinks)
+                .git_ignore(false)
+                .git_global(false)
+                .git_exclude(false);
+
+            for result in builder.build() {
+                let entry = match result {
+                    Ok(entry) => entry,
+                    Err(_) => continue,
+                };
+
+                if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                    continue;
+                }
+
+                let file_name = match entry.path().file_name().and_then(|n| n.to_str()) {
+                    Some(name) => name,
+                    None => continue,
+                };
+
+                if file_name == ".gitignore" && config.respect_gitignore {
+                    let _ = gitignore_builder.add(entry.path());
+                }
+
+                if file_name == ".codescopeignore" && config.respect_codescopeignore {
+                    let _ = gitignore_builder.add(entry.path());
+                }
+            }
+        }
+
+        let gitignore = gitignore_builder
+            .build()
+            .map_err(|e| Error::Config(format!("Failed to build ignore matcher: {e}")))?;
+
+        Ok(Self {
+            root,
+            overrides,
+            gitignore,
+            include_hidden: config.include_hidden,
+        })
+    }
+
+    /// Returns true if the path should be ignored.
+    pub fn is_ignored(&self, path: &Path) -> bool {
+        if !self.include_hidden && is_hidden(path, &self.root) {
+            return true;
+        }
+
+        match self.overrides.matched(path, path.is_dir()) {
+            Match::Whitelist(_) => return false,
+            Match::Ignore(_) => return true,
+            Match::None => {}
+        }
+
+        self.gitignore.matched(path, path.is_dir()).is_ignore()
+    }
+}
+
+fn is_hidden(path: &Path, root: &Path) -> bool {
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    rel.components()
+        .any(|component| component.as_os_str().to_string_lossy().starts_with('.'))
 }
 
 #[cfg(test)]

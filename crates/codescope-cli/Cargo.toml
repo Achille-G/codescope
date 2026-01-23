@@ -10,6 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 codescope-core = { workspace = true }
+codescope-embed = { workspace = true }
+codescope-parser = { workspace = true }
 codescope-search = { workspace = true }
 xxhash-rust = { workspace = true }
 
@@ -21,6 +23,12 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
+fs2 = { workspace = true }
+crossbeam-channel = { workspace = true }
+parking_lot = { workspace = true }
+ctrlc = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -64,6 +64,48 @@ codescope clean --yes
 codescope index --all
 ```
 
+## `codescope watch`
+
+Continuously updates the index while you work:
+- runs an initial scan, then watches for file changes
+- debounces event storms and periodically rescans for safety
+- respects `.gitignore`, `.codescopeignore`, and `config.toml` ignore patterns
+- takes a project lock to prevent multiple indexers
+
+Options:
+- `-j, --jobs <N>`: number of parallel worker jobs
+- `--debounce-ms <N>`: debounce window (default: 100)
+- `--poll-interval-ms <N>`: safety rescan interval (default: 60000, 0 to disable)
+- `--no-semantic`: skip embeddings / HNSW updates (lexical-only indexing)
+
+Examples:
+
+```bash
+codescope watch
+codescope watch --debounce-ms 300
+codescope watch --poll-interval-ms 0
+codescope watch --no-semantic
+```
+
+Stop with `Ctrl+C`.
+
+## `codescope daemon`
+
+Manage a background watch process.
+
+Subcommands:
+- `codescope daemon start [--jobs <N>] [--debounce-ms <N>] [--poll-interval-ms <N>]`
+- `codescope daemon stop`
+- `codescope daemon status`
+
+Examples:
+
+```bash
+codescope daemon start
+codescope daemon status
+codescope daemon stop
+```
+
 ### Vue (`.vue`) files
 
 `.vue` single-file components are indexed by treating them as HTML for parsing/chunking, so they are not ignored by default. If embeddings are enabled during indexing, they are also embedded and available for `--type semantic` / `--type hybrid` search.

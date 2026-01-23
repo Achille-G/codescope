@@ -10,9 +10,19 @@ pub(crate) fn relative_path(project_root: &Path, path: &Path) -> String {
         .replace('\\', "/")
 }
 
-pub(crate) fn filter_by_extensions(files: Vec<FileEntry>, extensions: &[String]) -> Vec<FileEntry> {
+pub(crate) fn build_walker_config(project: &Project) -> WalkerConfig {
+    let config = project.config();
+    WalkerConfig {
+        max_file_size: config.indexing.max_file_size,
+        follow_symlinks: config.indexing.follow_symlinks,
+        exclude_patterns: config.indexing.ignore_patterns.clone(),
+        ..Default::default()
+    }
+}
+
+pub(crate) fn build_extension_set(extensions: &[String]) -> Option<HashSet<String>> {
     if extensions.is_empty() {
-        return files;
+        return None;
     }
 
     let allowed: HashSet<String> = extensions
@@ -22,34 +32,35 @@ pub(crate) fn filter_by_extensions(files: Vec<FileEntry>, extensions: &[String])
         .collect();
 
     if allowed.is_empty() {
-        return files;
+        None
+    } else {
+        Some(allowed)
     }
+}
+
+pub(crate) fn extension_allowed(path: &Path, allowed: &HashSet<String>) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| allowed.contains(&ext.to_lowercase()))
+        .unwrap_or(false)
+}
+
+pub(crate) fn filter_by_extensions(files: Vec<FileEntry>, extensions: &[String]) -> Vec<FileEntry> {
+    let allowed = match build_extension_set(extensions) {
+        Some(allowed) => allowed,
+        None => return files,
+    };
 
     files
         .into_iter()
-        .filter(|entry| {
-            entry
-                .path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| allowed.contains(&ext.to_lowercase()))
-                .unwrap_or(false)
-        })
+        .filter(|entry| extension_allowed(&entry.path, &allowed))
         .collect()
 }
 
 pub(crate) fn collect_indexable_files(project: &Project) -> Result<Vec<FileEntry>> {
-    let config = project.config();
-    let walker_config = WalkerConfig {
-        max_file_size: config.indexing.max_file_size,
-        follow_symlinks: config.indexing.follow_symlinks,
-        exclude_patterns: config.indexing.ignore_patterns.clone(),
-        ..Default::default()
-    };
-
-    let walker = Walker::with_config(project.root().to_path_buf(), walker_config);
+    let walker = Walker::with_config(project.root().to_path_buf(), build_walker_config(project));
     let mut files = walker.walk()?;
-    files = filter_by_extensions(files, &config.indexing.include_extensions);
+    files = filter_by_extensions(files, &project.config().indexing.include_extensions);
     files.retain(|entry| entry.has_supported_language());
     Ok(files)
 }

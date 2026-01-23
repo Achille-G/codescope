@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 use tracing_subscriber::EnvFilter;
 
 mod commands;
+mod services;
 
 fn print_error(err: &anyhow::Error, verbose: bool) {
     eprintln!("Error: {err}");
@@ -112,6 +113,31 @@ enum Commands {
         #[command(subcommand)]
         command: commands::trace::TraceCommand,
     },
+
+    /// Watch for file changes and continuously update the index
+    Watch {
+        /// Number of parallel jobs for indexing
+        #[arg(short, long)]
+        jobs: Option<usize>,
+
+        /// Debounce time in milliseconds (default: 100)
+        #[arg(long)]
+        debounce_ms: Option<u64>,
+
+        /// Poll interval in milliseconds for safety rescan (default: 60000, 0 to disable)
+        #[arg(long)]
+        poll_interval_ms: Option<u64>,
+
+        /// Disable semantic (vector) indexing
+        #[arg(long)]
+        no_semantic: bool,
+    },
+
+    /// Manage the background daemon
+    Daemon {
+        #[command(subcommand)]
+        command: commands::daemon::DaemonCommand,
+    },
 }
 
 fn main() -> std::process::ExitCode {
@@ -161,6 +187,13 @@ fn main() -> std::process::ExitCode {
         Commands::Clean { yes } => commands::clean::run(yes),
         Commands::AgentSetup => commands::agent_setup::run(),
         Commands::Trace { command } => commands::trace::run(command),
+        Commands::Watch {
+            jobs,
+            debounce_ms,
+            poll_interval_ms,
+            no_semantic,
+        } => commands::watch::run(jobs, debounce_ms, poll_interval_ms, no_semantic),
+        Commands::Daemon { command } => commands::daemon::run(command),
     };
 
     match result {

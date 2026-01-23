@@ -7,6 +7,7 @@ use assert_cmd::assert::OutputAssertExt;
 use assert_cmd::cargo::cargo_bin;
 use predicates::prelude::*;
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
 #[allow(deprecated)]
@@ -14,8 +15,20 @@ fn codescope_cmd() -> Command {
     Command::new(cargo_bin("codescope"))
 }
 
+fn cli_test_guard() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+}
+
+macro_rules! cli_serial {
+    () => {
+        let _guard = cli_test_guard();
+    };
+}
+
 #[test]
 fn test_cli_help() {
+    cli_serial!();
     let mut cmd = codescope_cmd();
     cmd.arg("--help")
         .assert()
@@ -29,6 +42,7 @@ fn test_cli_help() {
 
 #[test]
 fn test_cli_search_help_includes_dedupe() {
+    cli_serial!();
     let mut cmd = codescope_cmd();
     cmd.args(["search", "--help"])
         .assert()
@@ -41,6 +55,7 @@ fn test_cli_search_help_includes_dedupe() {
 
 #[test]
 fn test_cli_trace_help_includes_output_flags() {
+    cli_serial!();
     let mut cmd = codescope_cmd();
     cmd.args(["trace", "callers", "--help"])
         .assert()
@@ -66,12 +81,14 @@ fn test_cli_trace_help_includes_output_flags() {
 
 #[test]
 fn test_cli_version() {
+    cli_serial!();
     let mut cmd = codescope_cmd();
     cmd.arg("--version").assert().success();
 }
 
 #[test]
 fn test_cli_init() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     let mut cmd = codescope_cmd();
@@ -92,6 +109,7 @@ fn test_cli_init() {
 
 #[test]
 fn test_cli_init_already_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // First init
@@ -112,6 +130,7 @@ fn test_cli_init_already_initialized() {
 
 #[test]
 fn test_cli_status_not_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     let mut cmd = codescope_cmd();
@@ -124,6 +143,7 @@ fn test_cli_status_not_initialized() {
 
 #[test]
 fn test_cli_status_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Initialize first
@@ -143,6 +163,7 @@ fn test_cli_status_initialized() {
 
 #[test]
 fn test_cli_search_not_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     let mut cmd = codescope_cmd();
@@ -156,6 +177,7 @@ fn test_cli_search_not_initialized() {
 
 #[test]
 fn test_cli_clean_not_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     let mut cmd = codescope_cmd();
@@ -168,6 +190,7 @@ fn test_cli_clean_not_initialized() {
 
 #[test]
 fn test_cli_clean_initialized() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Initialize first
@@ -187,6 +210,7 @@ fn test_cli_clean_initialized() {
 
 #[test]
 fn test_cli_index_empty_project() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Initialize first
@@ -206,6 +230,7 @@ fn test_cli_index_empty_project() {
 
 #[test]
 fn test_cli_index_with_file() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create a sample file
@@ -233,6 +258,7 @@ fn test_cli_index_with_file() {
 
 #[test]
 fn test_cli_search_with_indexed_content() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create a sample file
@@ -276,6 +302,7 @@ export function uniqueSearchableFunction(): string {
 
 #[test]
 fn test_cli_search_pretty_output() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create a sample file
@@ -313,6 +340,7 @@ fn test_cli_search_pretty_output() {
 
 #[test]
 fn test_cli_search_full_output_includes_snippet() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     std::fs::write(
@@ -351,6 +379,7 @@ export function testFunction(): void {
 
 #[test]
 fn test_cli_search_compact_output_omits_snippet() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     std::fs::write(
@@ -390,6 +419,7 @@ export function testFunction(): void {
 
 #[test]
 fn test_cli_search_no_dedupe_flag_is_accepted() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     std::fs::write(
@@ -427,6 +457,7 @@ export function testFunction(): void {
 
 #[test]
 fn test_cli_search_excerpt_lines_truncates_jsonl_snippet() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     std::fs::write(
@@ -483,6 +514,7 @@ export function longFunction(): void {
 
 #[test]
 fn test_cli_search_excerpt_lines_rejects_zero() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     let mut cmd = codescope_cmd();
@@ -501,6 +533,7 @@ fn test_cli_search_excerpt_lines_rejects_zero() {
 
 #[test]
 fn test_cli_search_top_k() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create multiple files
@@ -544,6 +577,7 @@ fn test_cli_search_top_k() {
 #[test]
 #[ignore = "HNSW capacity issue on incremental index - needs fix"]
 fn test_cli_index_incremental() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create initial file
@@ -584,6 +618,7 @@ fn test_cli_index_incremental() {
 
 #[test]
 fn test_cli_index_all_flag() {
+    cli_serial!();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create a file
