@@ -342,6 +342,7 @@ dependencies = [
  "ctrlc",
  "fs2",
  "indicatif",
+ "libc",
  "notify",
  "notify-debouncer-full",
  "parking_lot",
