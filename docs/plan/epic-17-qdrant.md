@@ -15,23 +15,29 @@ Non-goals (for this epic):
 - Replacing local metadata storage (SQLite) or lexical search (Tantivy).
 - Distributed full-text search.
 
-## Key Design Questions (to decide before coding)
+## Architecture Decisions
 
 1) **What is shared?**
-- Option A: Only vectors in Qdrant; keep SQLite + Tantivy local.
-- Option B: Vectors + minimal metadata in Qdrant (payload only) with local SQLite for source-of-truth.
+- Only vectors in Qdrant; SQLite (metadata + call graph) and Tantivy (BM25) remain local.
+- Qdrant provides shared/remote vector search; local stores remain source of truth.
 
-2) **ID strategy**
-- Use stable `chunk_id` as Qdrant point ID (recommended).
-- Or use a composite hash (file path + content hash) to avoid reuse.
+2) **Collection strategy: One collection per project**
+- Each project gets its own Qdrant collection (e.g., `codescope-<project_id>`).
+- Benefits: isolation, easy cleanup, independent config per project.
+- Project ID derived from repo root path hash or explicit config.
 
-3) **Consistency model**
-- Write ordering and retries for Qdrant updates.
-- How to handle tombstones vs hard deletes.
+3) **ID strategy**
+- Use stable `chunk_id` (u64) as Qdrant point ID.
+- Ensures consistency between local SQLite and remote Qdrant.
 
-4) **Filters**
-- Required filters (project_id, path prefix, language).
-- Payload schema for fast filtering.
+4) **Consistency model**
+- SQLite is source of truth; Qdrant is a projection.
+- Upserts with retry/backoff; hard deletes (no tombstones in Qdrant).
+- Resync command to rebuild Qdrant from local SQLite if drift detected.
+
+5) **Payload schema**
+- Indexed fields for filtering: `file_path`, `language`, `chunk_kind`.
+- Non-indexed fields: `symbol`, `start_line`, `end_line`, `content_hash`.
 
 ## Tickets
 
@@ -52,11 +58,16 @@ Non-goals (for this epic):
 
 **Status**: Not Started
 
+**Goal**: One collection per project with consistent naming and optimized payload.
+
 **Tasks**:
-- [ ] Define collection naming (per project_id).
-- [ ] Define payload fields: file path, language, symbol, chunk kind, start/end lines, content hash.
-- [ ] Define indexable payload fields (for filters).
-- [ ] Define dimension + distance config (cosine).
+- [ ] Collection naming: `codescope-<project_id>` where project_id is hash of repo root or explicit config.
+- [ ] Create collection with: dimension=384 (or model-dependent), distance=Cosine.
+- [ ] Payload schema:
+  - Indexed (for filters): `file_path` (keyword), `language` (keyword), `chunk_kind` (keyword)
+  - Non-indexed: `symbol`, `start_line`, `end_line`, `content_hash`
+- [ ] Collection creation on first index if not exists.
+- [ ] Add `codescope clean --remote` to delete the Qdrant collection.
 
 ---
 
@@ -64,11 +75,14 @@ Non-goals (for this epic):
 
 **Status**: Not Started
 
+**Goal**: Keep Qdrant in sync with local SQLite (source of truth).
+
 **Tasks**:
-- [ ] Batch upserts with retry/backoff.
-- [ ] Handle deletes and tombstones consistently.
-- [ ] Ensure Qdrant is in sync with SQLite chunk table.
-- [ ] Add a recovery/resync command for drift.
+- [ ] Batch upserts (100-500 points) with retry/backoff on network errors.
+- [ ] Hard deletes in Qdrant (no tombstones needed since SQLite tracks deletions).
+- [ ] On `codescope index`: upsert new/modified chunks, delete removed chunks.
+- [ ] Add `codescope sync --remote` to rebuild Qdrant collection from local SQLite.
+- [ ] Add `codescope status` field showing local vs remote chunk count for drift detection.
 
 ---
 
