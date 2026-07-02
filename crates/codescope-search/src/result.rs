@@ -76,7 +76,7 @@ impl SearchResult {
 
     /// Format as JSONL line
     pub fn to_jsonl(&self) -> String {
-        serde_json::to_string(self).unwrap_or_default()
+        serialize_jsonl(self)
     }
 
     /// Format as compact JSONL (no snippet) for token optimization
@@ -90,7 +90,7 @@ impl SearchResult {
             end: self.end,
             score: self.score,
         };
-        serde_json::to_string(&compact).unwrap_or_default()
+        serialize_jsonl(&compact)
     }
 
     /// Format as JSONL with truncated snippet
@@ -99,7 +99,19 @@ impl SearchResult {
         if self.snippet.lines().count() > max_lines {
             result.snippet = self.truncated_snippet(max_lines);
         }
-        serde_json::to_string(&result).unwrap_or_default()
+        serialize_jsonl(&result)
+    }
+}
+
+/// Serialize a value to a JSONL line, logging instead of silently
+/// swallowing serialization failures.
+fn serialize_jsonl<T: Serialize>(value: &T) -> String {
+    match serde_json::to_string(value) {
+        Ok(line) => line,
+        Err(err) => {
+            tracing::error!("Failed to serialize search result to JSON: {err}");
+            String::new()
+        }
     }
 }
 

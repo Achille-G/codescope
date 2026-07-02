@@ -48,5 +48,39 @@ pub fn run() -> Result<()> {
     println!("  BM25 docs:  {bm25_docs}");
     println!("  Vectors:    {vectors}");
 
+    // Consistency check across the three indexes.
+    let mut issues: Vec<String> = Vec::new();
+    if project.codescope_dir().join("indexing.dirty").exists() {
+        issues.push(
+            "a previous indexing run was interrupted; the next `codescope index` \
+             will perform a full re-index"
+                .to_string(),
+        );
+    }
+    if bm25_docs != stats.chunk_count {
+        issues.push(format!(
+            "BM25 documents ({bm25_docs}) do not match stored chunks ({}); \
+             run `codescope index --all` to repair",
+            stats.chunk_count
+        ));
+    }
+    if vectors > 0 && vectors != stats.chunk_count {
+        issues.push(format!(
+            "HNSW vectors ({vectors}) do not match stored chunks ({}); \
+             run `codescope index --all` to repair",
+            stats.chunk_count
+        ));
+    }
+
+    println!();
+    if issues.is_empty() {
+        println!("Consistency: OK");
+    } else {
+        println!("Consistency: WARNING");
+        for issue in issues {
+            println!("  - {issue}");
+        }
+    }
+
     Ok(())
 }

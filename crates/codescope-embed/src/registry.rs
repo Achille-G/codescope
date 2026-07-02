@@ -1,6 +1,6 @@
 //! Model registry for managing embedding models
 
-use crate::download::{download_file, DownloadProgress};
+use crate::download::{compute_sha256, download_file, DownloadProgress};
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -70,7 +70,8 @@ impl ModelRegistry {
             model_url: Some(
                 "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx".to_string()
             ),
-            // Checksum will be verified on first download and cached
+            // No upstream checksum published; pinned on first download
+            // (trust-on-first-use, see `pin_sha256`).
             model_sha256: None,
             tokenizer_url: Some(
                 "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json".to_string()
@@ -176,15 +177,17 @@ impl ModelRegistry {
         // Download model.onnx
         if let Some(url) = &info.model_url {
             let model_path = self.model_path(id);
+            let expected = pinned_sha256(info.model_sha256.as_deref(), &model_path);
             info!("Downloading model: {}", url);
             download_file(
                 url,
                 &model_path,
-                info.model_sha256.as_deref(),
+                expected.as_deref(),
                 on_progress
                     .as_mut()
                     .map(|f| move |p: DownloadProgress| f("model.onnx", p)),
             )?;
+            pin_sha256(&model_path)?;
         } else {
             return Err(crate::Error::Download(format!(
                 "No download URL for model {id}"
@@ -194,15 +197,17 @@ impl ModelRegistry {
         // Download tokenizer.json
         if let Some(url) = &info.tokenizer_url {
             let tokenizer_path = self.tokenizer_path(id);
+            let expected = pinned_sha256(info.tokenizer_sha256.as_deref(), &tokenizer_path);
             info!("Downloading tokenizer: {}", url);
             download_file(
                 url,
                 &tokenizer_path,
-                info.tokenizer_sha256.as_deref(),
+                expected.as_deref(),
                 on_progress
                     .as_mut()
                     .map(|f| move |p: DownloadProgress| f("tokenizer.json", p)),
             )?;
+            pin_sha256(&tokenizer_path)?;
         } else {
             return Err(crate::Error::Download(format!(
                 "No download URL for tokenizer {id}"
@@ -222,6 +227,46 @@ impl ModelRegistry {
             .ok_or_else(|| crate::Error::ModelNotFound("no default model".to_string()))?;
         self.ensure_model(&default.id.clone(), on_progress)
     }
+}
+
+fn sha256_sidecar(path: &Path) -> PathBuf {
+    let mut name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    name.push_str(".sha256");
+    path.with_file_name(name)
+}
+
+/// Expected checksum for a download: the registry-pinned value if present,
+/// otherwise a previously recorded trust-on-first-use sidecar.
+fn pinned_sha256(registry_value: Option<&str>, path: &Path) -> Option<String> {
+    if let Some(expected) = registry_value {
+        return Some(expected.to_string());
+    }
+    std::fs::read_to_string(sha256_sidecar(path))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Record the checksum of a freshly downloaded file (trust-on-first-use).
+///
+/// Any later re-download of the same file is verified against this value.
+/// Best-effort: failing to write the sidecar must not fail the download.
+fn pin_sha256(path: &Path) -> Result<()> {
+    let sidecar = sha256_sidecar(path);
+    if sidecar.exists() {
+        return Ok(());
+    }
+    let digest = compute_sha256(path)?;
+    if let Err(err) = std::fs::write(&sidecar, &digest) {
+        tracing::warn!(
+            "Failed to record checksum sidecar {}: {err}",
+            sidecar.display()
+        );
+    }
+    Ok(())
 }
 
 impl Default for ModelRegistry {

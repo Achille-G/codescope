@@ -1,8 +1,11 @@
 # Plan d'amélioration — codescope
 
 > Suite de l'[audit d'architecture](./audit-architecture.md) (2026-06-10, v0.2.0).
-> Les références `C1…C17` renvoient au tableau récapitulatif de l'audit.
+> Les références `C1…C18` renvoient au tableau récapitulatif de l'audit.
 > Priorisation : **P0** = fiabilité/correction · **P1** = scalabilité · **P2** = qualité/maintenabilité · **P3** = confort.
+>
+> **Mise à jour 2026-07-02 — vague 1 implémentée** : A1 (marqueur `indexing.dirty` + réparation par ré-index complet, ChangeDetector mis à jour après les commits BM25/HNSW, hydratation tolérante, contrôle de cohérence dans `status`), A2 (transaction SQLite par fichier, `transaction()` réentrante), A3 (retry exponentiel 3×, timeout configurable via `CODESCOPE_DOWNLOAD_TIMEOUT_SECS`, checksums épinglés en trust-on-first-use), A12, A14. Bonus découvert en route : **C18** — les suppressions BM25 étaient des no-ops silencieux (`chunk_id` non indexé) ; corrigé. Les index Tantivy existants ont l'ancien schéma : un `codescope index --all` est requis après mise à jour.
+> Écart assumé sur A1.3 : pas de commits intermédiaires tous les N fichiers — la stratégie de réparation retenue (ré-index complet sur marqueur dirty) les rendrait inutiles ; à revisiter avec A10.
 
 ---
 

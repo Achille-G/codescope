@@ -205,6 +205,9 @@ BFS correct avec garde de cycles (`call_graph.rs:76-146`) ; complexité O(V+E) m
 | C15 | Fusion pondérée instable sur liste à 1 résultat ; fusion sur top_k seulement (rappel) | 🟡 Basse | `fusion.rs:99-101`, `engine.rs:137-151` |
 | C16 | Pas de merge policy Tantivy explicite | 🟡 Basse | `bm25.rs` |
 | C17 | Registry de modèles fermé (2 modèles codés en dur) | 🟡 Basse | `registry.rs:63-98` |
+| C18 | Suppressions BM25 inopérantes : champ `chunk_id` non `INDEXED`, `delete_term` était un no-op silencieux — chaque ré-indexation incrémentale laissait des documents fantômes dans Tantivy (découvert pendant l'implémentation de la vague 1) | 🔴 Haute | `bm25.rs:84` |
+
+> **Mise à jour 2026-07-02** : C1, C2, C7, C12, C13 et C18 sont corrigés par la vague 1 du plan d'amélioration (voir `amelioration.md`).
 
 ---
 

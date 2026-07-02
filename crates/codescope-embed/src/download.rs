@@ -16,6 +16,22 @@ pub struct DownloadProgress {
     pub total: Option<u64>,
 }
 
+/// Number of attempts per URL before giving up.
+const MAX_ATTEMPTS: u32 = 3;
+/// Base delay for exponential backoff between attempts (2s, 4s, 8s...).
+const RETRY_BASE_DELAY_SECS: u64 = 2;
+/// Default per-request timeout, overridable via `CODESCOPE_DOWNLOAD_TIMEOUT_SECS`.
+const DEFAULT_TIMEOUT_SECS: u64 = 300;
+
+fn download_timeout() -> std::time::Duration {
+    let secs = std::env::var("CODESCOPE_DOWNLOAD_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|&v| v > 0)
+        .unwrap_or(DEFAULT_TIMEOUT_SECS);
+    std::time::Duration::from_secs(secs)
+}
+
 /// Download a file from a URL with progress reporting and optional checksum verification.
 ///
 /// # Arguments
@@ -36,6 +52,37 @@ pub fn download_file<F>(
 where
     F: FnMut(DownloadProgress),
 {
+    let mut last_error = None;
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        match download_file_once(url, dest, expected_sha256, &mut on_progress) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if attempt < MAX_ATTEMPTS {
+                    let delay = RETRY_BASE_DELAY_SECS * 2u64.pow(attempt - 1);
+                    warn!(
+                        "Download attempt {attempt}/{MAX_ATTEMPTS} failed for {url}: {e}; \
+                         retrying in {delay}s"
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(delay));
+                }
+                last_error = Some(e);
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| Error::Download("Download failed".to_string())))
+}
+
+fn download_file_once<F>(
+    url: &str,
+    dest: &Path,
+    expected_sha256: Option<&str>,
+    on_progress: &mut Option<F>,
+) -> Result<()>
+where
+    F: FnMut(DownloadProgress),
+{
     info!("Downloading {} to {}", url, dest.display());
 
     // Create parent directories if needed
@@ -46,7 +93,7 @@ where
     // Use a temp file during download
     let temp_path = dest.with_extension("download");
 
-    let result = download_to_temp(url, &temp_path, &mut on_progress);
+    let result = download_to_temp(url, &temp_path, on_progress);
 
     if let Err(e) = &result {
         // Clean up temp file on error
@@ -80,7 +127,7 @@ where
     F: FnMut(DownloadProgress),
 {
     let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(300))
+        .timeout(download_timeout())
         .build()
         .map_err(|e| Error::Download(e.to_string()))?;
 
