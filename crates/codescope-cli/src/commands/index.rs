@@ -17,11 +17,27 @@ use xxhash_rust::xxh3::xxh3_64;
 
 use crate::commands::util::{collect_indexable_files, relative_path};
 
+/// Marker file present while an indexing run is in flight.
+///
+/// If it survives (crash, kill), the three indexes (SQLite/Tantivy/HNSW) may
+/// be out of sync; the next run repairs by forcing a full re-index.
+const DIRTY_MARKER: &str = "indexing.dirty";
+
 pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
     let current_dir = env::current_dir().context("Failed to get current directory")?;
 
     let project = Project::find(&current_dir)
         .context("Not in a codescope project. Run 'codescope init' first.")?;
+
+    let dirty_marker = project.codescope_dir().join(DIRTY_MARKER);
+    let mut all = all;
+    if !all && dirty_marker.exists() {
+        warn!(
+            "Previous indexing run was interrupted; forcing a full re-index to restore consistency"
+        );
+        println!("Previous indexing run was interrupted; performing a full re-index.");
+        all = true;
+    }
 
     let start = Instant::now();
 
@@ -30,7 +46,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("static progress template is valid"),
     );
 
     // Check if model needs to be downloaded
@@ -42,7 +58,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
             ProgressStyle::with_template(
                 "[{elapsed_precise}] {bar:40.cyan/blue} {bytes}/{total_bytes} ({bytes_per_sec}) {msg}",
             )
-            .unwrap()
+            .expect("static progress template is valid")
             .progress_chars("##-"),
         );
 
@@ -111,10 +127,14 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         ProgressStyle::with_template(
             "[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} ETA {eta_precise} {msg}",
         )
-        .unwrap()
+        .expect("static progress template is valid")
         .progress_chars("##-"),
     );
     file_pb.set_message("Indexing files...");
+
+    // Mark the run as in flight before the first index mutation.
+    std::fs::write(&dirty_marker, b"indexing in progress\n")
+        .with_context(|| format!("Failed to create {}", dirty_marker.display()))?;
 
     let storage = Storage::open(&project.meta_db_path())?;
 
@@ -150,6 +170,12 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
         ));
     }
 
+    // The ChangeDetector is only updated after BM25/HNSW are durably
+    // committed at the end of the run; otherwise a crash would leave files
+    // marked as indexed while their index entries were lost.
+    let mut pending_removals: Vec<std::path::PathBuf> = Vec::new();
+    let mut pending_updates: Vec<std::path::PathBuf> = Vec::new();
+
     // Apply deletions first.
     let mut deleted_chunks = 0usize;
     for deleted_path in &changes.deleted {
@@ -162,7 +188,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                 hnsw.mark_deleted(chunk_id);
             }
         }
-        detector.remove_file(deleted_path)?;
+        pending_removals.push(deleted_path.clone());
     }
 
     // Index changed files through the concurrent read/parse pipeline.
@@ -205,27 +231,63 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                 let file_hash = xxh3_64(&file_bytes).to_le_bytes();
                 let size_bytes = i64::try_from(parsed.size).unwrap_or(i64::MAX);
 
-                let file_id = storage.upsert_file(
-                    &rel,
-                    Some(parsed.language.as_str()),
-                    &file_hash,
-                    size_bytes,
-                )?;
-
-                // Replace imports for this file.
-                storage.delete_imports_for_file(file_id)?;
-                for import in &parsed.imports {
-                    storage.insert_import(
-                        file_id,
-                        &import.source,
-                        import.symbol.as_deref(),
-                        import.alias.as_deref(),
-                        import.is_default,
+                // All SQLite writes for one file happen in a single transaction:
+                // one commit per file instead of one per statement, and no
+                // half-written file metadata on failure.
+                let (old_chunk_ids, new_chunk_ids) = storage.transaction(|_| {
+                    let file_id = storage.upsert_file(
+                        &rel,
+                        Some(parsed.language.as_str()),
+                        &file_hash,
+                        size_bytes,
                     )?;
-                }
 
-                // Remove old chunks for this file (if any), and reflect deletions in BM25/HNSW.
-                let old_chunk_ids = storage.delete_chunks_for_file(file_id)?;
+                    // Replace imports for this file.
+                    storage.delete_imports_for_file(file_id)?;
+                    for import in &parsed.imports {
+                        storage.insert_import(
+                            file_id,
+                            &import.source,
+                            import.symbol.as_deref(),
+                            import.alias.as_deref(),
+                            import.is_default,
+                        )?;
+                    }
+
+                    // Remove old chunks for this file (if any).
+                    let old_chunk_ids = storage.delete_chunks_for_file(file_id)?;
+
+                    let mut new_chunk_ids = Vec::with_capacity(parsed.chunks.len());
+                    for chunk in &parsed.chunks {
+                        let content_hash = xxh3_64(chunk.content.as_bytes()).to_le_bytes();
+                        let chunk_id = storage.insert_chunk(
+                            file_id,
+                            chunk.symbol.as_deref(),
+                            chunk.kind.as_str(),
+                            chunk.start_line,
+                            chunk.end_line,
+                            &content_hash,
+                            &chunk.content,
+                        )?;
+
+                        for call in &chunk.call_sites {
+                            storage.insert_call_site(
+                                chunk_id,
+                                &call.callee_name,
+                                call.line,
+                                call.column,
+                                call.is_method,
+                                call.receiver.as_deref(),
+                            )?;
+                        }
+
+                        new_chunk_ids.push(chunk_id);
+                    }
+
+                    Ok((old_chunk_ids, new_chunk_ids))
+                })?;
+
+                // Reflect old-chunk deletions in BM25/HNSW.
                 if !old_chunk_ids.is_empty() {
                     bm25.delete_by_chunk_ids(&old_chunk_ids)?;
                     for chunk_id in old_chunk_ids {
@@ -233,32 +295,8 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                     }
                 }
 
-                let mut new_chunk_ids = Vec::with_capacity(parsed.chunks.len());
                 let mut new_texts = Vec::with_capacity(parsed.chunks.len());
-
-                for chunk in &parsed.chunks {
-                    let content_hash = xxh3_64(chunk.content.as_bytes()).to_le_bytes();
-                    let chunk_id = storage.insert_chunk(
-                        file_id,
-                        chunk.symbol.as_deref(),
-                        chunk.kind.as_str(),
-                        chunk.start_line,
-                        chunk.end_line,
-                        &content_hash,
-                        &chunk.content,
-                    )?;
-
-                    for call in &chunk.call_sites {
-                        storage.insert_call_site(
-                            chunk_id,
-                            &call.callee_name,
-                            call.line,
-                            call.column,
-                            call.is_method,
-                            call.receiver.as_deref(),
-                        )?;
-                    }
-
+                for (chunk, &chunk_id) in parsed.chunks.iter().zip(&new_chunk_ids) {
                     bm25.add_document(
                         chunk_id,
                         &chunk.content,
@@ -266,8 +304,6 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                         chunk.kind.as_str(),
                         &rel,
                     )?;
-
-                    new_chunk_ids.push(chunk_id);
                     new_texts.push(chunk.content.as_str());
                     indexed_chunks += 1;
                 }
@@ -278,14 +314,14 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                         .zip(new_texts.chunks(embed_batch_size))
                     {
                         let embeddings = pipeline.embed_texts(texts)?;
-                        for (chunk_id, vector) in ids.iter().copied().zip(embeddings.into_iter()) {
+                        for (chunk_id, vector) in ids.iter().copied().zip(embeddings) {
                             hnsw.add(chunk_id, vector)?;
                             indexed_vectors += 1;
                         }
                     }
                 }
 
-                detector.update_file_state(&parsed.path)?;
+                pending_updates.push(parsed.path.clone());
                 file_pb.inc(1);
                 file_pb.set_message(format!(
                     "{indexed_files} files, {indexed_chunks} chunks, {indexed_vectors} vectors (last: {rel})"
@@ -306,6 +342,21 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
     bm25.end_write()?;
     hnsw.save(&project.hnsw_index_path())?;
 
+    // BM25 + HNSW are durable: record file states so incremental indexing
+    // skips them, then clear the in-flight marker.
+    for path in &pending_removals {
+        detector.remove_file(path)?;
+    }
+    for path in &pending_updates {
+        detector.update_file_state(path)?;
+    }
+    if let Err(err) = std::fs::remove_file(&dirty_marker) {
+        warn!(
+            "Failed to remove {}: {err}; the next run will perform a full re-index",
+            dirty_marker.display()
+        );
+    }
+
     file_pb.finish_and_clear();
 
     // Best-effort call-site resolution for call graph tracing.
@@ -313,7 +364,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
     let resolve_pb = ProgressBar::new(resolve_ids.len() as u64);
     resolve_pb.set_style(
         ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-            .unwrap()
+            .expect("static progress template is valid")
             .progress_chars("##-"),
     );
     resolve_pb.set_message("Resolving call sites...");

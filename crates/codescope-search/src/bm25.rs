@@ -4,19 +4,37 @@ use crate::{Error, Result};
 use std::path::Path;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
-use tantivy::schema::{Field, Schema, Value, STORED, TEXT};
+use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, TEXT};
 use tantivy::{doc, Index, IndexReader, IndexWriter, TantivyDocument};
+
+/// Resolved handles to the schema fields, built once per index.
+#[derive(Debug, Clone, Copy)]
+struct Bm25Fields {
+    chunk_id: Field,
+    content: Field,
+    symbol: Field,
+    kind: Field,
+    file: Field,
+}
+
+impl Bm25Fields {
+    fn from_schema(schema: &Schema) -> Result<Self> {
+        Ok(Self {
+            chunk_id: schema.get_field("chunk_id")?,
+            content: schema.get_field("content")?,
+            symbol: schema.get_field("symbol")?,
+            kind: schema.get_field("kind")?,
+            file: schema.get_field("file")?,
+        })
+    }
+}
 
 /// BM25 search index using Tantivy
 pub struct BM25Index {
     index: Index,
     reader: IndexReader,
     writer: Option<IndexWriter>,
-    chunk_id_field: Field,
-    content_field: Field,
-    symbol_field: Field,
-    kind_field: Field,
-    file_field: Field,
+    fields: Bm25Fields,
 }
 
 impl BM25Index {
@@ -29,59 +47,42 @@ impl BM25Index {
         let index = if path.join("meta.json").exists() {
             Index::open_in_dir(path)?
         } else {
-            Index::create_in_dir(path, schema.clone())?
+            Index::create_in_dir(path, schema)?
         };
 
         let reader = index.reader()?;
-
-        let chunk_id_field = schema.get_field("chunk_id").unwrap();
-        let content_field = schema.get_field("content").unwrap();
-        let symbol_field = schema.get_field("symbol").unwrap();
-        let kind_field = schema.get_field("kind").unwrap();
-        let file_field = schema.get_field("file").unwrap();
+        let fields = Bm25Fields::from_schema(&index.schema())?;
 
         Ok(Self {
             index,
             reader,
             writer: None,
-            chunk_id_field,
-            content_field,
-            symbol_field,
-            kind_field,
-            file_field,
+            fields,
         })
     }
 
     /// Create an in-memory index (for testing)
     pub fn open_memory() -> Result<Self> {
         let schema = Self::build_schema();
-        let index = Index::create_in_ram(schema.clone());
+        let index = Index::create_in_ram(schema);
 
         let reader = index.reader()?;
-
-        let chunk_id_field = schema.get_field("chunk_id").unwrap();
-        let content_field = schema.get_field("content").unwrap();
-        let symbol_field = schema.get_field("symbol").unwrap();
-        let kind_field = schema.get_field("kind").unwrap();
-        let file_field = schema.get_field("file").unwrap();
+        let fields = Bm25Fields::from_schema(&index.schema())?;
 
         Ok(Self {
             index,
             reader,
             writer: None,
-            chunk_id_field,
-            content_field,
-            symbol_field,
-            kind_field,
-            file_field,
+            fields,
         })
     }
 
     fn build_schema() -> Schema {
         let mut schema_builder = Schema::builder();
 
-        // Chunk ID (stored for retrieval)
-        schema_builder.add_i64_field("chunk_id", STORED);
+        // Chunk ID (stored for retrieval, indexed so delete_term can match it —
+        // deleting by chunk_id is a silent no-op on a non-indexed field)
+        schema_builder.add_i64_field("chunk_id", INDEXED | STORED);
 
         // Content (full-text searchable)
         schema_builder.add_text_field("content", TEXT);
@@ -121,14 +122,14 @@ impl BM25Index {
             .ok_or_else(|| Error::Index("Writer not initialized".to_string()))?;
 
         let mut doc = doc!(
-            self.chunk_id_field => chunk_id,
-            self.content_field => content,
-            self.kind_field => kind,
-            self.file_field => file,
+            self.fields.chunk_id => chunk_id,
+            self.fields.content => content,
+            self.fields.kind => kind,
+            self.fields.file => file,
         );
 
         if let Some(sym) = symbol {
-            doc.add_text(self.symbol_field, sym);
+            doc.add_text(self.fields.symbol, sym);
         }
 
         writer.add_document(doc)?;
@@ -143,7 +144,7 @@ impl BM25Index {
             .ok_or_else(|| Error::Index("Writer not initialized".to_string()))?;
 
         for &chunk_id in chunk_ids {
-            let term = tantivy::Term::from_field_i64(self.chunk_id_field, chunk_id);
+            let term = tantivy::Term::from_field_i64(self.fields.chunk_id, chunk_id);
             writer.delete_term(term);
         }
         Ok(())
@@ -172,7 +173,7 @@ impl BM25Index {
 
         // Parse query against content and symbol fields
         let query_parser =
-            QueryParser::for_index(&self.index, vec![self.content_field, self.symbol_field]);
+            QueryParser::for_index(&self.index, vec![self.fields.content, self.fields.symbol]);
 
         let query = query_parser
             .parse_query(query)
@@ -183,7 +184,7 @@ impl BM25Index {
         let mut results = Vec::with_capacity(top_docs.len());
         for (score, doc_address) in top_docs {
             let doc: TantivyDocument = searcher.doc(doc_address)?;
-            if let Some(chunk_id) = doc.get_first(self.chunk_id_field) {
+            if let Some(chunk_id) = doc.get_first(self.fields.chunk_id) {
                 if let Some(id) = chunk_id.as_i64() {
                     results.push((id, score));
                 }
@@ -239,6 +240,42 @@ mod tests {
         let results = index.search("hello", 10).unwrap();
         assert!(!results.is_empty());
         assert_eq!(results[0].0, 1);
+    }
+
+    #[test]
+    fn test_bm25_delete_by_chunk_ids() {
+        let mut index = BM25Index::open_memory().unwrap();
+
+        index.begin_write(50_000_000).unwrap();
+        index
+            .add_document(
+                1,
+                "fn hello_world() { println!(\"Hello\"); }",
+                Some("hello_world"),
+                "function",
+                "main.rs",
+            )
+            .unwrap();
+        index
+            .add_document(
+                2,
+                "fn hello_again() { println!(\"Hello again\"); }",
+                Some("hello_again"),
+                "function",
+                "main.rs",
+            )
+            .unwrap();
+        index.commit().unwrap();
+
+        index.delete_by_chunk_ids(&[1]).unwrap();
+        index.commit().unwrap();
+
+        // Deletion must actually remove the document (regression: with a
+        // non-INDEXED chunk_id field, delete_term was a silent no-op).
+        let results = index.search("hello", 10).unwrap();
+        assert!(results.iter().all(|(id, _)| *id != 1));
+        assert!(results.iter().any(|(id, _)| *id == 2));
+        assert_eq!(index.stats().unwrap().num_docs, 1);
     }
 
     #[test]

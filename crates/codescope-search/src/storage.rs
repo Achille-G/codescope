@@ -929,7 +929,13 @@ impl Storage {
     /// Run a closure inside a SQLite transaction.
     ///
     /// Rolls back automatically if the closure returns an error.
+    /// Nesting-safe: when a transaction is already active on this connection,
+    /// the closure runs within it (commit/rollback stay owned by the outer call).
     pub fn transaction<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        if !self.conn.is_autocommit() {
+            return f(&self.conn);
+        }
+
         self.conn.execute_batch("BEGIN TRANSACTION")?;
 
         match f(&self.conn) {
@@ -2467,6 +2473,34 @@ mod tests {
 
         assert!(result.is_err());
         assert!(storage.get_kv("k").unwrap().is_none());
+    }
+
+    #[test]
+    fn test_storage_transaction_nested() {
+        let storage = Storage::open_memory().unwrap();
+
+        // An outer transaction wrapping methods that use transactions
+        // internally (e.g. delete_chunks_for_file) must not fail with
+        // "cannot start a transaction within a transaction".
+        let result: Result<()> = storage.transaction(|_| {
+            let file_id = storage.upsert_file("a.rs", Some("rust"), b"h1", 1)?;
+            storage.insert_chunk(file_id, Some("f"), "function", 1, 2, b"c1", "fn f() {}")?;
+            storage.transaction(|_| {
+                storage.insert_chunk(file_id, Some("g"), "function", 3, 4, b"c2", "fn g() {}")?;
+                Ok(())
+            })?;
+            storage.delete_chunks_for_file(file_id)?;
+            Ok(())
+        });
+        assert!(result.is_ok());
+
+        // Inner failure rolls back the whole outer transaction.
+        let result: Result<()> = storage.transaction(|_| {
+            storage.upsert_file("b.rs", Some("rust"), b"h2", 1)?;
+            storage.transaction(|_| Err(Error::Storage("boom".to_string())))
+        });
+        assert!(result.is_err());
+        assert!(storage.get_file_id("b.rs").unwrap().is_none());
     }
 
     #[test]

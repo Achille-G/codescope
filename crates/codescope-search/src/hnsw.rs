@@ -109,7 +109,7 @@ impl HNSWIndex {
             .map_err(|err| Error::Index(err.to_string()))?;
 
         let mut results = Vec::with_capacity(top_k.min(matches.keys.len()));
-        for (key, distance) in matches.keys.into_iter().zip(matches.distances.into_iter()) {
+        for (key, distance) in matches.keys.into_iter().zip(matches.distances) {
             if self.tombstones.contains(&key) {
                 continue;
             }

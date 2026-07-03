@@ -6,7 +6,7 @@ use crate::hnsw::HNSWIndex;
 use crate::rerank;
 use crate::result::{SearchResult, SearchResults, SearchType};
 use crate::storage::{StoragePool, StorageStats};
-use crate::{Error, Result};
+use crate::Result;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -166,9 +166,16 @@ impl SearchEngine {
         let mut results = Vec::with_capacity(hits.len());
 
         for &(chunk_id, score) in hits {
-            let record = storage
-                .get_chunk(chunk_id)?
-                .ok_or_else(|| Error::Search(format!("Missing chunk_id {chunk_id} in storage")))?;
+            // A stale index entry (e.g. after an interrupted indexing run) must not
+            // make the whole query fail; skip it and let the user repair with
+            // `codescope index --all`.
+            let Some(record) = storage.get_chunk(chunk_id)? else {
+                tracing::warn!(
+                    "chunk_id {chunk_id} returned by an index but missing from storage; \
+                     skipping result (run `codescope index --all` to repair)"
+                );
+                continue;
+            };
 
             let snippet = truncate_to_lines(&record.content, 12);
 
@@ -310,5 +317,43 @@ mod tests {
             .unwrap();
         assert_eq!(hybrid.search_type, SearchType::Hybrid);
         assert!(!hybrid.results.is_empty());
+    }
+
+    #[test]
+    fn test_search_skips_chunks_missing_from_storage() {
+        let pool = StoragePool::open_memory(2).unwrap();
+        {
+            let storage = pool.get().unwrap();
+            seed_storage(&storage);
+        }
+
+        // Index a document whose chunk_id does not exist in storage,
+        // simulating an out-of-sync index after an interrupted run.
+        let mut bm25 = BM25Index::open_memory().unwrap();
+        bm25.begin_write(50_000_000).unwrap();
+        bm25.add_document(
+            1,
+            "fn hello_world() { println!(\"hello\"); }",
+            Some("hello_world"),
+            "function",
+            "src/lib.rs",
+        )
+        .unwrap();
+        bm25.add_document(
+            999,
+            "fn hello_stale() {}",
+            Some("hello_stale"),
+            "function",
+            "gone.rs",
+        )
+        .unwrap();
+        bm25.commit().unwrap();
+
+        let hnsw = HNSWIndex::with_defaults(4).unwrap();
+        let engine = SearchEngine::new(pool, bm25, hnsw);
+
+        let results = engine.search_lexical("hello", 5).unwrap();
+        assert!(results.results.iter().all(|r| r.chunk_id != Some(999)));
+        assert!(results.results.iter().any(|r| r.chunk_id == Some(1)));
     }
 }

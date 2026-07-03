@@ -13,7 +13,6 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-rayon = { workspace = true }
 parking_lot = { workspace = true }
 dirs = { workspace = true }
 reqwest = { version = "0.12", features = ["blocking", "stream"] }
