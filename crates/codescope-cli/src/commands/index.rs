@@ -314,7 +314,7 @@ pub fn run(all: bool, jobs: Option<usize>) -> Result<()> {
                         .zip(new_texts.chunks(embed_batch_size))
                     {
                         let embeddings = pipeline.embed_texts(texts)?;
-                        for (chunk_id, vector) in ids.iter().copied().zip(embeddings.into_iter()) {
+                        for (chunk_id, vector) in ids.iter().copied().zip(embeddings) {
                             hnsw.add(chunk_id, vector)?;
                             indexed_vectors += 1;
                         }
