@@ -28,7 +28,7 @@ This folder contains the structured implementation plan with epics and tickets.
 | [Epic 14](./epic-14-postgres-pgvector.md) | ⚪ Pending | Postgres + pgvector Backend (Concurrent / Shared Index) |
 | [Epic 15](./epic-15-token-optimization.md) | 🟢 Done    | Token Optimization for AI Agents (Compact Mode, Deduplication) |
 | [Epic 16](./epic-16-call-graph.md) | 🟢 Done    | Call Graph Tracing (callers/callees/graph) |
-| [Epic 17](./epic-17-vector-store.md) | 🔴 Not Started | Vector Store Migration (LanceDB embarqué + ChromaDB optionnel) — voir [étude](../etude-vector-store.md) |
+| [Epic 17](./epic-17-vector-store.md) | 🔴 Not Started | Vector Store multi-backends : LanceDB embarqué (défaut) + Chroma/pgvector/Qdrant en BYO ou géré — voir [étude](../etude-vector-store.md) |
 
 ## Implementation Phases
 

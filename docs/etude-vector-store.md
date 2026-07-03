@@ -59,22 +59,31 @@ Quantisation f16/i8, mmap par défaut, compaction automatique. Le moins cher (~2
 | Option | Verdict | Raison |
 |---|---|---|
 | **sqlite-vec** | ❌ | Extension encore alpha (0.1.10-alpha.4) ; brute-force sans vrai index ANN au-delà de ~100k vecteurs |
-| **Qdrant** | ❌ (pour le défaut) | Serveur uniquement (client Rust 1.18) ; mêmes coûts de provisioning que Chroma sans être demandé ; excellent candidat si un backend serveur s'impose plus tard |
-| **pgvector** | ⏩ Epic 14 | Déjà planifié comme backend optionnel « index partagé » ; complémentaire, pas concurrent |
+| **Qdrant** | ✅ backend BYO | Serveur uniquement (client Rust officiel 1.18, mature) ; retenu comme backend « bring your own » derrière le trait ; pas de mode géré en v1 |
+| **pgvector** | ✅ backend BYO | Retenu comme backend « bring your own » (DSN Postgres) — sous-ensemble vectoriel de l'epic 14, qui garde le scope complet (métadonnées partagées, FTS) |
 | **DuckDB + vss** | ❌ | Extension vectorielle expérimentale, chargement d'extension à distribuer |
 
-## 4. Décision recommandée
+## 4. Décision retenue
 
-**Architecture à deux niveaux derrière un trait `VectorStore`** :
+**Une abstraction `VectorStore` unique, trois niveaux d'usage** (décision validée le 2026-07-03) :
 
-1. **Défaut : LanceDB embarqué** — c'est la seule option qui satisfait *simultanément* C-P1→C-P5 : l'utilisateur ne voit rien (pas de serveur, pas d'install), on gagne deletes natifs, filtrage par métadonnées, index sur disque (mémoire bornée), compaction et écritures atomiques. Le « smooth pour l'utilisateur » est structurel, pas à construire.
-2. **Optionnel : backend ChromaDB** (`[vector_store] backend = "chroma"`) avec **provisioning automatique** (téléchargement du binaire + cycle de vie géré par codescope) — pour les cas multi-process/équipe et parce que c'est la demande explicite ; le trait rend le choix réversible et permet d'ajouter Qdrant/pgvector plus tard au même endroit.
+1. **Défaut : LanceDB embarqué** — satisfait *simultanément* C-P1→C-P5 : l'utilisateur ne voit rien (pas de serveur, pas d'install), on gagne deletes natifs, filtrage par métadonnées, index sur disque (mémoire bornée), compaction et écritures atomiques. Le « smooth pour l'utilisateur » est structurel, pas à construire.
+2. **Backends serveurs en mode « bring your own »** (priorité 1 pour l'externe) : l'utilisateur qui a déjà une base pointe codescope dessus via `config.toml` (`endpoint`/DSN + auth) — **ChromaDB**, **pgvector** et **Qdrant**, les trois serveurs les plus répandus. Coût minimal (clients Rust uniquement + documentation de raccordement), aucune gestion de process.
+3. **Mode « géré » (managed)** : pour l'utilisateur qui veut un backend serveur **sans rien installer**, codescope provisionne lui-même le serveur local (téléchargement du binaire avec checksum, démarrage, health-check, arrêt). Livré d'abord pour Chroma (seul des trois à distribuer un binaire local autonome raisonnable) ; pgvector/Qdrant managés restent documentés comme extension future (Postgres embarqué est trop lourd, on n'impose pas Docker — C-P3).
+
+### Perd-on le mono-binaire ? Non.
+
+Point important pour lever l'ambiguïté :
+
+- Les **clients** (crates `chromadb`, `qdrant-client`, `postgres`+pgvector) sont des **bibliothèques Rust compilées dans l'unique binaire `codescope`**. Ajouter ces backends grossit le binaire de quelques Mo mais ne crée ni deuxième exécutable ni dépendance d'installation.
+- Ce qui est externe, c'est le **serveur**, et seulement si l'utilisateur **opte** pour un backend serveur : soit il le possède déjà (mode BYO — rien à gérer pour nous), soit codescope télécharge un *asset* versionné dans `~/.codescope/bin/` (mode géré — même statut que les modèles ONNX déjà téléchargés aujourd'hui : un asset au premier run, pas une installation).
+- Le chemin par défaut (LanceDB) reste **100 % in-process** : un seul binaire, zéro process annexe, offline.
 
 Points d'honnêteté d'architecte :
 
-- Faire de **Chroma le défaut** violerait C-P3/C-P4 dans l'esprit (un serveur auto-géré reste un serveur : port, process, pannes) et ferait dépendre chaque `codescope search` d'un sidecar. Je le déconseille comme défaut, tout en le livrant comme backend de première classe.
-- **SQLite reste** pour le relationnel pur (call graph, états de fichiers) dans cette phase : la résolution des call sites est du SQL à jointures que ni Chroma ni Lance ne font mieux. Il passe derrière un trait `MetadataStore` (action A11 de l'audit), ce qui rend son remplacement ultérieur (DuckDB, Postgres/epic 14) mécanique. Le contenu des chunks, lui, migre dans le vector store (source unique pour l'hydratation des résultats).
-- La bascule est sécurisée par un **feature flag + bench comparatif** (rappel@k, latence, RAM) avant de changer le défaut.
+- Faire d'un backend serveur le **défaut** violerait C-P3/C-P4 (un serveur auto-géré reste un serveur : port, process, pannes) et ferait dépendre chaque `codescope search` d'un sidecar — d'où l'embarqué par défaut, les serveurs en opt-in.
+- **SQLite reste** pour le relationnel pur (call graph, états de fichiers) dans cette phase : la résolution des call sites est du SQL à jointures que ni Chroma ni Lance ne font mieux. Il passe derrière un trait `MetadataStore` (action A11 de l'audit), ce qui rend son remplacement ultérieur (Postgres/epic 14) mécanique. Le contenu des chunks, lui, migre dans le vector store (source unique pour l'hydratation des résultats).
+- La bascule du défaut est sécurisée par un **feature flag + bench comparatif** (rappel@k, latence, RAM) avant de changer le défaut.
 
 ## 5. Expérience utilisateur cible
 
@@ -86,11 +95,20 @@ codescope init && codescope index && codescope search "..."
 codescope index
 > Index au format v1 (usearch) détecté ; reconstruction au format v2 (lance)... [auto]
 
-# Utilisateur avancé (serveur Chroma auto-provisionné) :
-codescope init --vector-store chroma   # ou édition de config.toml
+# Utilisateur qui a déjà une base (mode « bring your own », documenté) :
+#   config.toml :
+#     [vector_store]
+#     backend = "chroma"                    # ou "qdrant", "pgvector"
+#     endpoint = "http://10.0.0.5:8000"     # ou DSN postgres pour pgvector
+codescope index      # se connecte, crée la collection/table, rien d'autre à faire
+
+# Utilisateur qui veut Chroma sans rien installer (mode géré) :
+codescope init --vector-store chroma   # sans endpoint → provisioning automatique
 codescope index
 > Téléchargement de chroma-server 1.x (sha256 vérifié)... démarrage local :127.0.0.1:<port>
 ```
+
+Règle simple : `endpoint` renseigné → mode BYO (on s'y connecte, point) ; absent → mode géré (codescope fait tout : téléchargement, lancement, arrêt).
 
 ## 6. Devenir de SQLite et trajectoire long terme
 
@@ -106,7 +124,8 @@ codescope index
 |---|---|---|
 | 0 | Abstractions (`VectorStore`, `MetadataStore`), extraction `IndexPipeline` vers core (A10) | ~1 semaine |
 | 1 | Backend LanceDB + migration auto des index + bench | ~1,5 semaine |
-| 2 | Backend ChromaDB + provisioner de sidecar (download/lifecycle) | ~1,5 semaine |
-| 3 | Bascule du défaut, docs, CI matrix, nettoyage usearch | ~0,5 semaine |
+| 2 | Backends serveurs en mode BYO : config générique `endpoint`, ChromaStore, PgvectorStore, QdrantStore, doc « connecter sa base » | ~1,5 semaine |
+| 3 | Mode géré : provisioner Chroma (download/lifecycle) + intégration CLI | ~1 semaine |
+| 4 | Bascule du défaut, docs, CI matrix, nettoyage usearch | ~0,5 semaine |
 
 Détail ticket par ticket, contrats d'API et critères d'acceptation : voir [`plan/epic-17-vector-store.md`](./plan/epic-17-vector-store.md).
